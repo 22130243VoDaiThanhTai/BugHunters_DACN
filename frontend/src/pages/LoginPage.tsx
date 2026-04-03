@@ -1,7 +1,56 @@
-import React from "react";
+import React, { FormEvent, useState } from "react";
 import "../styles/Login.css";
 
+type LoginApiResponse = {
+    success: boolean;
+    message: string;
+    email?: string;
+    fullName?: string;
+};
+
 const Login = () => {
+    const [email, setEmail] = useState("demo@company.com");
+    const [password, setPassword] = useState("123456");
+    const [rememberMe, setRememberMe] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState("");
+    const [isError, setIsError] = useState(false);
+
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setLoading(true);
+        setMessage("");
+        setIsError(false);
+
+        try {
+            const response = await fetch("http://localhost:8080/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data: LoginApiResponse = await response.json();
+
+            if (!response.ok || !data.success) {
+                setIsError(true);
+                setMessage(data.message || "Login failed");
+                return;
+            }
+
+            setMessage(`${data.message}. Welcome ${data.fullName || data.email}`);
+            if (rememberMe) {
+                localStorage.setItem("loggedInUser", data.email || email);
+            }
+        } catch (error) {
+            setIsError(true);
+            setMessage("Cannot connect to backend server");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="container">
             {/* LEFT SIDE */}
@@ -18,32 +67,54 @@ const Login = () => {
 
             {/* RIGHT SIDE (Giữ nguyên code của bạn) */}
             <div className="right">
-                <div className="login-box">
+                <form className="login-box" onSubmit={handleSubmit}>
                     <h2>Welcome Back</h2>
                     <p>Please enter your credentials to access the portal.</p>
 
                     <label>WORK EMAIL</label>
-                    <input type="email" placeholder="name@company.com" />
+                    <input
+                        type="email"
+                        placeholder="name@company.com"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        required
+                    />
 
                     <div className="password-row">
                         <label>PASSWORD</label>
                         <a href="#">Forgot password?</a>
                     </div>
-                    <input type="password" placeholder="••••••••" />
+                    <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        required
+                    />
 
                     <div className="remember">
-                        <input type="checkbox" />
+                        <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={(event) => setRememberMe(event.target.checked)}
+                        />
                         <span>Keep me signed in</span>
                     </div>
 
-                    <button className="btn">Sign In →</button>
+                    <button className="btn" type="submit" disabled={loading}>
+                        {loading ? "Signing in..." : "Sign In"}
+                    </button>
+
+                    {message && (
+                        <p className={isError ? "status-message error" : "status-message success"}>{message}</p>
+                    )}
 
                     <hr />
 
                     <p className="footer-text">
                         Don't have an account? <a href="#">Contact HR</a>
                     </p>
-                </div>
+                </form>
             </div>
         </div>
     );

@@ -179,6 +179,25 @@ input {
     background: #174ea6;
 }
 
+.btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.status-message {
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-message.success {
+    color: #1c7c3d;
+}
+
+.status-message.error {
+    color: #b42318;
+}
+
 hr {
     margin: 20px 0;
 }
