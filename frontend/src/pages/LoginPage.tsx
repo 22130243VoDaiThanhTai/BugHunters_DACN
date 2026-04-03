@@ -8,7 +8,11 @@ type LoginApiResponse = {
     fullName?: string;
 };
 
-const Login = () => {
+type LoginProps = {
+    onLoginSuccess: (email: string) => void;
+};
+
+const Login = ({ onLoginSuccess }: LoginProps) => {
     const [email, setEmail] = useState("demo@company.com");
     const [password, setPassword] = useState("123456");
     const [rememberMe, setRememberMe] = useState(false);
@@ -40,6 +44,7 @@ const Login = () => {
             }
 
             setMessage(`${data.message}. Welcome ${data.fullName || data.email}`);
+            onLoginSuccess(data.email || email);
             if (rememberMe) {
                 localStorage.setItem("loggedInUser", data.email || email);
             }

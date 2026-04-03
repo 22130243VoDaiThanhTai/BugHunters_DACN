@@ -27,6 +27,15 @@ public class AppUser {
     @Column(nullable = false)
     private String password;
 
+    @Column
+    private String department;
+
+    @Column
+    private String position;
+
+    @Column
+    private String role;
+
     public Long getId() {
         return id;
     }
@@ -61,5 +70,29 @@ public class AppUser {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }
