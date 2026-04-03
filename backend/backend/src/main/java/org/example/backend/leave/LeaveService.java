@@ -1,14 +1,17 @@
 package org.example.backend.leave;
 
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import org.example.backend.leave.dto.CreateLeaveRequestRequest;
 import org.example.backend.leave.dto.LeaveDashboardResponse;
 import org.example.backend.leave.dto.LeaveRequestDto;
+import org.example.backend.leave.dto.UpdateLeaveRequestStatusRequest;
 import org.example.backend.user.AppUser;
 import org.example.backend.user.AppUserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LeaveService {
@@ -30,14 +33,9 @@ public class LeaveService {
 
     public LeaveDashboardResponse getDashboard(String email) {
         AppUser user = findUserByEmail(email);
-
-        LeaveDashboardResponse.LeaveBalanceSummary leaveBalanceSummary = leaveBalanceRepository
-                .findByUserId(user.getId())
-                .map(balance -> new LeaveDashboardResponse.LeaveBalanceSummary(
-                        valueOrDefault(balance.getTotalDays(), DEFAULT_TOTAL_DAYS),
-                        valueOrDefault(balance.getUsedDays(), 0),
-                        valueOrDefault(balance.getRemainingDays(), DEFAULT_TOTAL_DAYS)))
-                .orElse(new LeaveDashboardResponse.LeaveBalanceSummary(DEFAULT_TOTAL_DAYS, 0, DEFAULT_TOTAL_DAYS));
+        LeaveDashboardResponse.LeaveBalanceSummary leaveBalanceSummary = syncAndGetLeaveBalanceSummary(
+            user.getId(),
+            LocalDate.now().getYear());
 
         List<LeaveRequestDto> recentRequests = leaveRequestRepository
                 .findTop5ByUserIdOrderByCreatedAtDescIdDesc(user.getId())
@@ -90,6 +88,30 @@ public class LeaveService {
         return toDto(saved);
     }
 
+    @Transactional
+    public LeaveRequestDto updateLeaveRequestStatus(Long requestId, UpdateLeaveRequestStatusRequest request) {
+        if (requestId == null) {
+            throw new IllegalArgumentException("Request ID is required");
+        }
+        if (request == null || request.status() == null) {
+            throw new IllegalArgumentException("Status is required");
+        }
+
+        LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Leave request not found: " + requestId));
+
+        LeaveStatus targetStatus = request.status();
+        if (targetStatus == LeaveStatus.APPROVED) {
+            validateAnnualLimitBeforeApproval(leaveRequest);
+        }
+
+        leaveRequest.setStatus(targetStatus);
+        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
+
+        syncAndGetLeaveBalanceSummary(saved.getUserId(), saved.getStartDate().getYear());
+        return toDto(saved);
+    }
+
     private AppUser findUserByEmail(String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Email is required");
@@ -108,6 +130,67 @@ public class LeaveService {
                 leaveRequest.getReason(),
                 leaveRequest.getStatus());
     }
+
+        @Transactional
+        private LeaveDashboardResponse.LeaveBalanceSummary syncAndGetLeaveBalanceSummary(Long userId, int year) {
+        LocalDate fromDate = LocalDate.of(year, 1, 1);
+        LocalDate toDate = LocalDate.of(year, 12, 31);
+        int usedDays = valueOrDefault(
+            leaveRequestRepository.sumTotalDaysByUserIdAndStatusAndStartDateBetween(
+                userId,
+                LeaveStatus.APPROVED,
+                fromDate,
+                toDate),
+            0);
+        int remainingDays = Math.max(0, DEFAULT_TOTAL_DAYS - usedDays);
+
+        LeaveBalance leaveBalance = leaveBalanceRepository
+            .findByUserId(userId)
+            .orElseGet(() -> {
+                LeaveBalance created = new LeaveBalance();
+                created.setUserId(userId);
+                return created;
+            });
+
+        leaveBalance.setTotalDays(DEFAULT_TOTAL_DAYS);
+        leaveBalance.setUsedDays(usedDays);
+        leaveBalance.setRemainingDays(remainingDays);
+        leaveBalanceRepository.save(leaveBalance);
+
+        return new LeaveDashboardResponse.LeaveBalanceSummary(DEFAULT_TOTAL_DAYS, usedDays, remainingDays);
+        }
+
+        private void validateAnnualLimitBeforeApproval(LeaveRequest leaveRequest) {
+        if (leaveRequest.getStartDate() == null) {
+            throw new IllegalArgumentException("Leave request start date is required");
+        }
+
+        int requestYear = leaveRequest.getStartDate().getYear();
+        LocalDate fromDate = LocalDate.of(requestYear, 1, 1);
+        LocalDate toDate = LocalDate.of(requestYear, 12, 31);
+
+        int approvedDaysInYear = valueOrDefault(
+            leaveRequestRepository.sumTotalDaysByUserIdAndStatusAndStartDateBetween(
+                leaveRequest.getUserId(),
+                LeaveStatus.APPROVED,
+                fromDate,
+                toDate),
+            0);
+        int currentRequestDays = valueOrDefault(leaveRequest.getTotalDays(), 0);
+
+        boolean alreadyApproved = leaveRequest.getStatus() == LeaveStatus.APPROVED;
+        int projectedUsedDays = alreadyApproved
+            ? approvedDaysInYear
+            : approvedDaysInYear + currentRequestDays;
+
+        if (projectedUsedDays > DEFAULT_TOTAL_DAYS) {
+            int remaining = Math.max(0, DEFAULT_TOTAL_DAYS - approvedDaysInYear);
+            throw new IllegalArgumentException(
+                "Cannot approve request: employee can only take " + DEFAULT_TOTAL_DAYS
+                    + " days/year. Remaining days: " + remaining);
+        }
+        }
+
 
     private static Integer valueOrDefault(Integer value, Integer fallback) {
         return value == null ? fallback : value;

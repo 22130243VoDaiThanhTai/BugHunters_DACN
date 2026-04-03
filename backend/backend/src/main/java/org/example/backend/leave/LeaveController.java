@@ -5,9 +5,12 @@ import java.util.Map;
 import org.example.backend.leave.dto.CreateLeaveRequestRequest;
 import org.example.backend.leave.dto.LeaveDashboardResponse;
 import org.example.backend.leave.dto.LeaveRequestDto;
+import org.example.backend.leave.dto.UpdateLeaveRequestStatusRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,6 +48,23 @@ public class LeaveController {
                     "success", true,
                     "message", "Request submitted successfully",
                     "request", createdRequest));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", ex.getMessage()));
+        }
+    }
+
+    @PatchMapping("/requests/{requestId}/status")
+    public ResponseEntity<?> updateLeaveRequestStatus(
+            @PathVariable Long requestId,
+            @RequestBody UpdateLeaveRequestStatusRequest request) {
+        try {
+            LeaveRequestDto updatedRequest = leaveService.updateLeaveRequestStatus(requestId, request);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Request status updated successfully",
+                    "request", updatedRequest));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
