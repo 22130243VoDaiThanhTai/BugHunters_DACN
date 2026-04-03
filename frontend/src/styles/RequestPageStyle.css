@@ -1,0 +1,282 @@
+/* Layout & Sider */
+.leave-layout {
+    min-height: 100vh;
+    background-color: #f8fafc;
+}
+
+.leave-sider {
+    border-right: 1px solid #edf2f7;
+    padding-top: 20px;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    margin-bottom: 40px;
+}
+
+.logo-icon {
+    width: 36px;
+    height: 36px;
+    background: #2563eb;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-weight: bold;
+    margin-right: 12px;
+}
+
+.main-title {
+    font-weight: 700;
+    color: #1a202c;
+}
+
+.sub-title {
+    font-size: 10px;
+    color: #718096;
+    font-weight: 600;
+}
+
+.side-menu {
+    border-right: none;
+}
+
+.new-request-btn {
+    padding: 24px;
+    margin-top: 20px;
+}
+
+/* Header */
+.leave-header {
+    background: #fff;
+    padding: 0 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.brand-name {
+    color: #2563eb;
+    font-weight: 800;
+    font-size: 18px;
+    margin-right: 40px;
+}
+
+.active-link {
+    color: #2563eb;
+    font-weight: 600;
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 20px;
+}
+
+.icon-btn {
+    font-size: 18px;
+    color: #718096;
+    cursor: pointer;
+}
+
+/* Main Content Area */
+.leave-content {
+    padding: 40px;
+}
+
+.content-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-intro {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 32px;
+}
+
+.breadcrumb {
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+/* Remaining Days Card */
+.remaining-days-card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.days-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.calendar-icon-box {
+    background: #eff6ff;
+    color: #2563eb;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 20px;
+}
+
+.days-count {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a202c;
+}
+
+/* Grid & Form */
+.grid-container {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 32px;
+    margin: 0 auto
+
+}
+
+.main-form-card {
+    border-radius: 20px;
+    padding: 12px;
+    border: none;
+}
+
+.date-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.input-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    color: #a0aec0;
+    margin-bottom: 8px;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.reason-box textarea {
+    background: #f8fafc;
+    border: none;
+    border-radius: 12px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 32px;
+}
+
+.submit-btn {
+    border-radius: 10px;
+    height: 48px;
+    padding: 0 32px;
+    font-weight: 600;
+}
+
+.cancel-btn {
+    border-radius: 10px;
+    height: 48px;
+    padding: 0 32px;
+    background: #f1f5f9;
+    border: none;
+}
+
+/* Right Info Cards */
+.guidelines-card, .team-card {
+    border-radius: 16px;
+    border: none;
+    margin-bottom: 24px;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.info-icon {
+    color: #2563eb;
+}
+
+.guide-list {
+    list-style: none;
+    padding: 0;
+}
+
+.guide-list li {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #4a5568;
+}
+
+.guide-list svg {
+    color: #10b981;
+    margin-top: 3px;
+}
+
+.team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.availability-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.member-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.progress-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+}
+
+.fill-1 {
+    width: 100%;
+    background: #2d3748;
+}
+
+.fill-2 {
+    width: 80%;
+    background: #2563eb;
+    border-right: 15px solid #fca5a5;
+}
+
+/* Giả lập overlap */
+.fill-3 {
+    width: 40%;
+    background: #2d3748;
+}
+
+.overlap-hint {
+    font-size: 11px;
+    display: block;
+}
