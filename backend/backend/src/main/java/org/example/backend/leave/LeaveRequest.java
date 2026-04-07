@@ -96,4 +96,12 @@ public class LeaveRequest {
     public void setStatus(LeaveStatus status) {
         this.status = status;
     }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }
