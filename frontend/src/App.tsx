@@ -4,8 +4,10 @@ import './App.css';
 import LoginPage from './pages/LoginPage';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import SubmitRequestPage from './pages/SubmitRequestPage';
+import PendingRequestsPage from './pages/PendingRequestsPage';
+import HistoryPage from './pages/HistoryPage';
 
-type AppView = 'dashboard' | 'submit';
+type AppView = 'dashboard' | 'submit' | 'pending' | 'history';
 
 // Dùng React.FC để định nghĩa type cho functional component
 const App: React.FC = () => {
@@ -35,11 +37,27 @@ const App: React.FC = () => {
                     userEmail={loggedInUser}
                     onLogout={handleLogout}
                     onNavigateToSubmit={() => setCurrentView('submit')}
+                    onNavigateToPending={() => setCurrentView('pending')}
+                    onNavigateToHistory={() => setCurrentView('history')}
                 />
-            ) : (
+            ) : currentView === 'submit' ? (
                 <SubmitRequestPage
                     userEmail={loggedInUser}
                     onBackToDashboard={() => setCurrentView('dashboard')}
+                    onNavigateToHistory={() => setCurrentView('history')}
+                />
+            ) : currentView === 'pending' ? (
+                <PendingRequestsPage
+                    userEmail={loggedInUser}
+                    onBackToDashboard={() => setCurrentView('dashboard')}
+                    onNavigateToSubmit={() => setCurrentView('submit')}
+                    onNavigateToHistory={() => setCurrentView('history')}
+                />
+            ) : (
+                <HistoryPage
+                    userEmail={loggedInUser}
+                    onBackToDashboard={() => setCurrentView('dashboard')}
+                    onNavigateToSubmit={() => setCurrentView('submit')}
                 />
             )
         ) : (

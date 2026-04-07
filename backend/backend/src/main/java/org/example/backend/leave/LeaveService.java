@@ -7,7 +7,11 @@ import java.util.List;
 import org.example.backend.leave.dto.CreateLeaveRequestRequest;
 import org.example.backend.leave.dto.LeaveDashboardResponse;
 import org.example.backend.leave.dto.LeaveRequestDto;
+<<<<<<< HEAD
 import org.example.backend.leave.dto.UpdateLeaveRequestStatusRequest;
+=======
+import org.example.backend.leave.dto.PendingLeaveRequestDto;
+>>>>>>> bdedd7c (View Pending request and View Personal Leave Requset History)
 import org.example.backend.user.AppUser;
 import org.example.backend.user.AppUserRepository;
 import org.springframework.stereotype.Service;
@@ -62,6 +66,35 @@ public class LeaveService {
                 pendingCount,
                 recentRequests);
     }
+
+    public List<PendingLeaveRequestDto> getPendingRequests(String managerEmail) {
+        AppUser manager = findUserByEmail(managerEmail);
+
+        if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
+            throw new IllegalArgumentException("Access denied: Manager role required");
+        }
+
+        List<LeaveRequest> pendingRequests = leaveRequestRepository.findByStatusOrderByCreatedAtDesc(LeaveStatus.PENDING);
+
+        return pendingRequests.stream().map(req -> {
+            AppUser user = appUserRepository.findById(req.getUserId()).orElse(null);
+
+            return new PendingLeaveRequestDto(
+                    req.getId(),
+                    req.getUserId(),
+                    user != null ? user.getFullName() : "Unknown User",
+                    user != null ? user.getRole() : "UNKNOWN",
+                    user != null ? user.getPosition() : "Unknown Position",
+                    req.getStartDate(),
+                    req.getEndDate(),
+                    req.getTotalDays(),
+                    req.getReason(),
+                    req.getStatus(),
+                    req.getCreatedAt()
+            );
+        }).toList();
+    }
+
 
     public LeaveRequestDto createLeaveRequest(CreateLeaveRequestRequest request) {
         if (request.startDate() == null || request.endDate() == null) {

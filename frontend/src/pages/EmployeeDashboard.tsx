@@ -39,6 +39,8 @@ type EmployeeDashboardProps = {
     userEmail: string;
     onLogout?: () => void;
     onNavigateToSubmit?: () => void;
+    onNavigateToPending?: () => void;
+    onNavigateToHistory?: () => void;
 };
 
 const API_URL = "http://localhost:8080/api/leave/dashboard";
@@ -124,7 +126,7 @@ const StatusBadge = ({ status }: { status: LeaveRequest["status"] }) => (
     </span>
 );
 
-const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogout, onNavigateToSubmit }) => {
+const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogout, onNavigateToSubmit, onNavigateToPending, onNavigateToHistory }) => {
     const [activeNav, setActiveNav] = useState("dashboard");
     const [dashboardData, setDashboardData] = useState<DashboardApiResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -183,6 +185,10 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogo
         setActiveNav(itemId);
         if (itemId === "submit") {
             onNavigateToSubmit?.();
+        } else if (itemId === "pending") {
+            onNavigateToPending?.();
+        } else if (itemId === "history") {
+            onNavigateToHistory?.();
         }
     };
 
