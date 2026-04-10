@@ -7,11 +7,8 @@ import java.util.List;
 import org.example.backend.leave.dto.CreateLeaveRequestRequest;
 import org.example.backend.leave.dto.LeaveDashboardResponse;
 import org.example.backend.leave.dto.LeaveRequestDto;
-<<<<<<< HEAD
 import org.example.backend.leave.dto.UpdateLeaveRequestStatusRequest;
-=======
 import org.example.backend.leave.dto.PendingLeaveRequestDto;
->>>>>>> bdedd7c (View Pending request and View Personal Leave Requset History)
 import org.example.backend.user.AppUser;
 import org.example.backend.user.AppUserRepository;
 import org.springframework.stereotype.Service;
