@@ -182,7 +182,13 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogo
     }, [user?.fullName]);
 
     const handleNavClick = (itemId: string) => {
+        if (itemId === "pending" && user?.role !== "MANAGER") {
+            alert("Vui lòng đăng nhập tài khoản MANAGER để truy cập");
+            return;
+        }
+
         setActiveNav(itemId);
+
         if (itemId === "submit") {
             onNavigateToSubmit?.();
         } else if (itemId === "pending") {
@@ -191,6 +197,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogo
             onNavigateToHistory?.();
         }
     };
+
 
     if (loading) {
         return <div className="ed-root">Loading dashboard...</div>;

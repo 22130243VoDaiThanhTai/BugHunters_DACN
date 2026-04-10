@@ -10,6 +10,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.example.backend.leave.dto.UpdateLeaveRequestStatusRequest;
+import org.example.backend.leave.dto.LeaveRequestDto;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -26,21 +31,54 @@ public class AdminController {
     public ResponseEntity<?> getPendingRequests(@RequestParam String email) {
         try {
             List<PendingLeaveRequestDto> requests = leaveService.getPendingRequests(email);
+
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Pending requests loaded successfully",
                     "data", requests
             ));
-        } catch (IllegalArgumentException ex) {
+
+        } catch (RuntimeException ex) {
+            if ("FORBIDDEN".equals(ex.getMessage())) {
+                return ResponseEntity.status(403).body(Map.of(
+                        "success", false,
+                        "message", "Access denied: Manager role required"
+                ));
+            }
+
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "success", false,
+                    "message", "Unexpected error occurred"
+            ));
+        }
+    }
+    @PutMapping("/requests/{id}/status")
+    public ResponseEntity<?> updateRequestStatus(
+            @PathVariable Long id,
+            @RequestBody UpdateLeaveRequestStatusRequest request
+    ) {
+        try {
+            LeaveRequestDto updated = leaveService.updateLeaveRequestStatus(id, request);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Updated successfully",
+                    "data", updated
+            ));
+        } catch (RuntimeException ex) {
+            if ("FORBIDDEN".equals(ex.getMessage())) {
+                return ResponseEntity.status(403).body(Map.of(
+                        "success", false,
+                        "message", "Access denied"
+                ));
+            }
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "message", ex.getMessage()
             ));
-        } catch (Exception ex) {
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "message", "An expected error occurred"
-            ));
         }
     }
+
+
+
 }
