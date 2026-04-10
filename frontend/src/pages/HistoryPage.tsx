@@ -1,10 +1,19 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "../styles/History.css";
 
 type HistoryPageProps = {
     userEmail: string;
     onBackToDashboard: () => void;
     onNavigateToSubmit: () => void;
+};
+
+type LeaveRequest = {
+    id: number;
+    startDate: string;
+    endDate: string;
+    totalDays: number;
+    reason: string;
+    status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 };
 
 // Mock data to match screenshot perfectly
@@ -92,7 +101,51 @@ const AlertIcon = () => (
     </svg>
 );
 
-const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToDashboard, onNavigateToSubmit }) => {
+const HistoryPage: React.FC<HistoryPageProps> = ({ userEmail, onBackToDashboard, onNavigateToSubmit }) => {
+    const [requests, setRequests] = useState(mockRequests);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch(
+                    `http://localhost:8080/api/leave/requests/me?email=${encodeURIComponent(userEmail)}`
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.requests) {
+                        // Format backend response to match mock data structure
+                        const formattedRequests = data.requests.map((req: LeaveRequest) => ({
+                            id: req.id,
+                            type: req.reason || "Leave Request",
+                            icon: "annual",
+                            duration: `${req.startDate} - ${req.endDate}\n${new Date(req.startDate).getFullYear()}`,
+                            days: req.totalDays,
+                            submitted: new Date(req.startDate).toLocaleDateString(),
+                            status: req.status,
+                            reason: req.status === "REJECTED" ? req.reason : null
+                        }));
+                        setRequests(formattedRequests);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch leave history:", error);
+                // Keep mock data as fallback
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (userEmail) {
+            fetchHistory();
+        }
+    }, [userEmail]);
+
+    if (loading) {
+        return <div style={{ padding: '20px' }}>Loading leave history...</div>;
+    }
+
     return (
         <div className="hp-root">
             {/* Sidebar */}
@@ -189,7 +242,8 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToDashboard, onNavigate
                                 </tr>
                             </thead>
                             <tbody>
-                                {mockRequests.map((req, index) => (
+                                {requests && requests.length > 0 ? (
+                                    requests.map((req) => (
                                     <React.Fragment key={req.id}>
                                         <tr className={`hp-tr ${req.status === 'REJECTED' ? 'hp-tr-rejected' : ''}`}>
                                             <td>
@@ -204,7 +258,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToDashboard, onNavigate
                                             </td>
                                             <td>
                                                 <div className="hp-duration">
-                                                    {req.duration.split('\n').map((line, i) => (
+                                                    {req.duration.split('\n').map((line: string, i: number) => (
                                                         <React.Fragment key={i}>
                                                             {line}{i === 0 && <br/>}
                                                         </React.Fragment>
@@ -241,7 +295,14 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onBackToDashboard, onNavigate
                                         )}
                                         {req.reason && <tr><td colSpan={6} className="hp-spacer-td"></td></tr>}
                                     </React.Fragment>
-                                ))}
+                                ))
+                                ) : (
+                                    <tr className="hp-tr">
+                                        <td colSpan={6} style={{ textAlign: 'center', padding: '20px' }}>
+                                            No leave requests found.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                         
