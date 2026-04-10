@@ -18,6 +18,7 @@ const { TextArea } = Input;
 type SubmitRequestPageProps = {
     userEmail: string;
     onBackToDashboard?: () => void;
+    onNavigateToHistory?: () => void;
 };
 
 type SubmitApiResponse = {
@@ -25,7 +26,7 @@ type SubmitApiResponse = {
     message: string;
 };
 
-const SubmitRequestPage: React.FC<SubmitRequestPageProps> = ({ userEmail, onBackToDashboard }) => {
+const SubmitRequestPage: React.FC<SubmitRequestPageProps> = ({ userEmail, onBackToDashboard, onNavigateToHistory }) => {
     const [loading, setLoading] = useState(false);
     const [startDate, setStartDate] = useState<Dayjs | null>(null);
     const [endDate, setEndDate] = useState<Dayjs | null>(null);
@@ -96,7 +97,7 @@ const SubmitRequestPage: React.FC<SubmitRequestPageProps> = ({ userEmail, onBack
                 <Menu mode="inline" selectedKeys={["2"]} className="side-menu">
                     <Menu.Item key="1" icon={<DashboardOutlined />} onClick={onBackToDashboard}>Dashboard</Menu.Item>
                     <Menu.Item key="2" icon={<PlusOutlined />}>Submit Request</Menu.Item>
-                    <Menu.Item key="3" icon={<HistoryOutlined />}>History</Menu.Item>
+                    <Menu.Item key="3" icon={<HistoryOutlined />} onClick={onNavigateToHistory}>History</Menu.Item>
                 </Menu>
 
                 <div className="new-request-btn">
