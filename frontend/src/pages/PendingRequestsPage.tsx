@@ -119,9 +119,35 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
         return DEFAULT_AVATARS[id % DEFAULT_AVATARS.length];
     };
 
-    const handleAction = (id: number, action: 'approve' | 'reject') => {
-        alert(`Stub for ${action} request id: ${id}`);
+    const handleAction = async (id: number, action: 'approve' | 'reject') => {
+        try {
+            const res = await fetch(
+                `http://localhost:8080/api/admin/requests/${id}/status?email=${userEmail}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        status: action === "approve" ? "APPROVED" : "REJECTED"
+                    })
+                }
+            );
+
+            const data = await res.json();
+
+            if (data.success) {
+                alert("Cập nhật thành công ");
+                loadRequests(); // reload lại list
+            } else {
+                alert(data.message);
+            }
+
+        } catch (err) {
+            alert("Lỗi server ");
+        }
     };
+
 
     return (
         <div className="pr-root">
