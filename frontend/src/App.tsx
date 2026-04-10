@@ -6,14 +6,16 @@ import EmployeeDashboard from './pages/EmployeeDashboard';
 import SubmitRequestPage from './pages/SubmitRequestPage';
 import PendingRequestsPage from './pages/PendingRequestsPage';
 import HistoryPage from './pages/HistoryPage';
+import RequestDetailsPage from './pages/RequestDetailsPage';
 
-type AppView = 'dashboard' | 'submit' | 'pending' | 'history';
+type AppView = 'dashboard' | 'submit' | 'pending' | 'history' | 'detail';
 
 // Dùng React.FC để định nghĩa type cho functional component
 const App: React.FC = () => {
   const [loggedInUser, setLoggedInUser] = useState<string>(localStorage.getItem('loggedInUser') || '');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(Boolean(localStorage.getItem('loggedInUser')));
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
 
   const handleLoginSuccess = (loggedInEmail: string) => {
     localStorage.setItem('loggedInUser', loggedInEmail);
@@ -52,6 +54,17 @@ const App: React.FC = () => {
                     onBackToDashboard={() => setCurrentView('dashboard')}
                     onNavigateToSubmit={() => setCurrentView('submit')}
                     onNavigateToHistory={() => setCurrentView('history')}
+                    onViewDetails={(id) => {
+                        setSelectedRequestId(id);
+                        setCurrentView('detail');
+                    }}
+                />
+            ) : currentView === 'detail' && selectedRequestId !== null ? (
+                <RequestDetailsPage
+                    userEmail={loggedInUser}
+                    requestId={selectedRequestId}
+                    onBack={() => setCurrentView('pending')}
+                    onBackToDashboard={() => setCurrentView('dashboard')}
                 />
             ) : (
                 <HistoryPage

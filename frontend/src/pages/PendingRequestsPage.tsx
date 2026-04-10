@@ -26,6 +26,7 @@ type PendingRequestsPageProps = {
     onBackToDashboard: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToSubmit?: () => void;
+    onViewDetails?: (id: number) => void;
 };
 
 const API_URL = "http://localhost:8080/api/admin/pending-requests";
@@ -82,7 +83,7 @@ const IconLogout = () => (
     </svg>
 );
 
-const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, onBackToDashboard, onNavigateToHistory, onNavigateToSubmit }) => {
+const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, onBackToDashboard, onNavigateToHistory, onNavigateToSubmit, onViewDetails }) => {
     const [requests, setRequests] = useState<PendingLeaveRequestDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -121,6 +122,15 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
 
     const handleAction = (id: number, action: 'approve' | 'reject') => {
         alert(`Stub for ${action} request id: ${id}`);
+    };
+
+    const handleRowClick = (id: number, e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('button')) {
+            return;
+        }
+        if (onViewDetails) {
+            onViewDetails(id);
+        }
     };
 
     return (
@@ -256,7 +266,7 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
                                     <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px' }}>No pending requests</td></tr>
                                 )}
                                 {requests.map(req => (
-                                    <tr key={req.id}>
+                                    <tr key={req.id} onClick={(e) => handleRowClick(req.id, e)} style={{ cursor: 'pointer' }}>
                                         <td>
                                             <div className="pr-emp">
                                                 <div className="pr-emp__avatar" style={{ background: getAvatarColor(req.userId) }}>
