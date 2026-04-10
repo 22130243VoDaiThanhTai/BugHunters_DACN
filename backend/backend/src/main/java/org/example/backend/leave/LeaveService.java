@@ -9,7 +9,9 @@ import org.example.backend.leave.dto.LeaveDashboardResponse;
 import org.example.backend.leave.dto.LeaveRequestDto;
 import org.example.backend.leave.dto.UpdateLeaveRequestStatusRequest;
 import org.example.backend.leave.dto.PendingLeaveRequestDto;
+
 import org.example.backend.leave.dto.LeaveRequestDetailDto;
+
 import org.example.backend.user.AppUser;
 import org.example.backend.user.AppUserRepository;
 import org.springframework.stereotype.Service;
@@ -69,8 +71,9 @@ public class LeaveService {
         AppUser manager = findUserByEmail(managerEmail);
 
         if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
-            throw new IllegalArgumentException("Access denied: Manager role required");
+            throw new RuntimeException("FORBIDDEN");
         }
+
 
         List<LeaveRequest> pendingRequests = leaveRequestRepository.findByStatusOrderByCreatedAtDesc(LeaveStatus.PENDING);
 
@@ -104,6 +107,15 @@ public class LeaveService {
             .orElseThrow(() -> new IllegalArgumentException("Request not found"));
         AppUser user = appUserRepository.findById(req.getUserId())
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    public List<LeaveRequestDto> getPersonalLeaveHistory(String email) {
+        AppUser user = findUserByEmail(email);
+
+        return leaveRequestRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
 
         int requestYear = req.getStartDate() != null ? req.getStartDate().getYear() : LocalDate.now().getYear();
         LeaveDashboardResponse.LeaveBalanceSummary summary = syncAndGetLeaveBalanceSummary(user.getId(), requestYear);

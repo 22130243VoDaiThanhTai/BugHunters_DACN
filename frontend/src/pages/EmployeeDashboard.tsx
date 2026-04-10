@@ -182,7 +182,13 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogo
     }, [user?.fullName]);
 
     const handleNavClick = (itemId: string) => {
+        if (itemId === "pending" && user?.role !== "MANAGER") {
+            alert("Vui lòng đăng nhập tài khoản MANAGER để truy cập");
+            return;
+        }
+
         setActiveNav(itemId);
+
         if (itemId === "submit") {
             onNavigateToSubmit?.();
         } else if (itemId === "pending") {
@@ -191,6 +197,16 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogo
             onNavigateToHistory?.();
         }
     };
+
+    // Filter nav items based on user role
+    const filteredNavItems = useMemo(() => {
+        return NAV_ITEMS.filter((item) => {
+            if (item.id === "pending") {
+                return user?.role === "MANAGER";
+            }
+            return true;
+        });
+    }, [user?.role]);
 
     if (loading) {
         return <div className="ed-root">Loading dashboard...</div>;
@@ -216,7 +232,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogo
                 </div>
 
                 <nav className="ed-nav">
-                    {NAV_ITEMS.map((item) => (
+                    {filteredNavItems.map((item) => (
                         <button
                             key={item.id}
                             className={`ed-nav__btn${activeNav === item.id ? " ed-nav__btn--active" : ""}`}

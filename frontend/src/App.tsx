@@ -25,7 +25,9 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('loggedInUser');
+    // Clear all storage
+    localStorage.clear();
+    sessionStorage.clear();
     setLoggedInUser('');
     setIsAuthenticated(false);
     setCurrentView('dashboard');
@@ -74,7 +76,7 @@ const App: React.FC = () => {
                 />
             )
         ) : (
-            <LoginPage onLoginSuccess={handleLoginSuccess} />
+            <LoginPage key={`login-${isAuthenticated}`} onLoginSuccess={handleLoginSuccess} />
         )}
 
       </div>

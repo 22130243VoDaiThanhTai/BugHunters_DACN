@@ -13,6 +13,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     long countByStatus(LeaveStatus status);
 
 
+
     @Query("""
             select coalesce(sum(lr.totalDays), 0)
             from LeaveRequest lr
@@ -27,5 +28,6 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
             @Param("toDate") LocalDate toDate);
 
     List<LeaveRequest> findByStatusOrderByCreatedAtDesc(LeaveStatus status);
-}
+
+
 

@@ -1,5 +1,6 @@
 package org.example.backend.leave;
 
+import java.util.List;
 import java.util.Map;
 
 import org.example.backend.leave.dto.CreateLeaveRequestRequest;
@@ -65,6 +66,21 @@ public class LeaveController {
                     "success", true,
                     "message", "Request status updated successfully",
                     "request", updatedRequest));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/requests/me")
+    public ResponseEntity<?> getPersonalLeaveHistory(@RequestParam String email) {
+        try {
+            List<LeaveRequestDto> requests = leaveService.getPersonalLeaveHistory(email);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Personal leave history retrieved successfully",
+                    "requests", requests));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,

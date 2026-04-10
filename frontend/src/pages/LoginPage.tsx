@@ -1,4 +1,4 @@
-import React, { FormEvent, useState } from "react";
+import React, { FormEvent, useState, useEffect } from "react";
 import "../styles/Login.css";
 
 type LoginApiResponse = {
@@ -13,12 +13,26 @@ type LoginProps = {
 };
 
 const Login = ({ onLoginSuccess }: LoginProps) => {
-    const [email, setEmail] = useState("demo@company.com");
-    const [password, setPassword] = useState("123456");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [isError, setIsError] = useState(false);
+
+    // Load saved credentials on mount
+    useEffect(() => {
+        const savedEmail = localStorage.getItem("savedEmail");
+        const savedPassword = localStorage.getItem("savedPassword");
+        
+        if (savedEmail) {
+            setEmail(savedEmail);
+            setRememberMe(true);
+        }
+        if (savedPassword) {
+            setPassword(savedPassword);
+        }
+    }, []);
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -45,9 +59,19 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
 
             setMessage(`${data.message}. Welcome ${data.fullName || data.email}`);
             onLoginSuccess(data.email || email);
+            
+            // Save credentials only if "Keep me signed in" is checked
             if (rememberMe) {
-                localStorage.setItem("loggedInUser", data.email || email);
+                localStorage.setItem("savedEmail", data.email || email);
+                localStorage.setItem("savedPassword", password);
+            } else {
+                // Clear saved credentials if unchecked
+                localStorage.removeItem("savedEmail");
+                localStorage.removeItem("savedPassword");
             }
+            
+            // Always save logged in user for session
+            localStorage.setItem("loggedInUser", data.email || email);
         } catch (error) {
             setIsError(true);
             setMessage("Cannot connect to backend server");
@@ -72,7 +96,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
 
             {/* RIGHT SIDE (Giữ nguyên code của bạn) */}
             <div className="right">
-                <form className="login-box" onSubmit={handleSubmit}>
+                <form className="login-box" onSubmit={handleSubmit} autoComplete="off">
                     <h2>Welcome Back</h2>
                     <p>Please enter your credentials to access the portal.</p>
 
@@ -92,6 +116,7 @@ const Login = ({ onLoginSuccess }: LoginProps) => {
                     <input
                         type="password"
                         placeholder="••••••••"
+                        autoComplete="new-password"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         required
