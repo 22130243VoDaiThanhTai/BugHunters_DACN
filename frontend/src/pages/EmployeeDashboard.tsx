@@ -192,6 +192,16 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogo
         }
     };
 
+    // Filter nav items based on user role
+    const filteredNavItems = useMemo(() => {
+        return NAV_ITEMS.filter((item) => {
+            if (item.id === "pending") {
+                return user?.role === "MANAGER";
+            }
+            return true;
+        });
+    }, [user?.role]);
+
     if (loading) {
         return <div className="ed-root">Loading dashboard...</div>;
     }
@@ -216,7 +226,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userEmail, onLogo
                 </div>
 
                 <nav className="ed-nav">
-                    {NAV_ITEMS.map((item) => (
+                    {filteredNavItems.map((item) => (
                         <button
                             key={item.id}
                             className={`ed-nav__btn${activeNav === item.id ? " ed-nav__btn--active" : ""}`}
