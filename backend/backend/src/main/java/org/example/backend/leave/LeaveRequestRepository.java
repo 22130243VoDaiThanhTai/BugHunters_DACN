@@ -12,17 +12,20 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
 
     long countByStatus(LeaveStatus status);
 
-        @Query("""
-                        select coalesce(sum(lr.totalDays), 0)
-                        from LeaveRequest lr
-                        where lr.userId = :userId
-                            and lr.status = :status
-                            and lr.startDate between :fromDate and :toDate
-                        """)
-        Integer sumTotalDaysByUserIdAndStatusAndStartDateBetween(
-                        @Param("userId") Long userId,
-                        @Param("status") LeaveStatus status,
-                        @Param("fromDate") LocalDate fromDate,
-                        @Param("toDate") LocalDate toDate);
+    @Query("""
+        select coalesce(sum(lr.totalDays), 0)
+        from LeaveRequest lr
+        where lr.userId = :userId
+            and lr.status = :status
+            and lr.startDate between :fromDate and :toDate
+        """)
+    Integer sumTotalDaysByUserIdAndStatusAndStartDateBetween(
+        @Param("userId") Long userId,
+        @Param("status") LeaveStatus status,
+        @Param("fromDate") LocalDate fromDate,
+        @Param("toDate") LocalDate toDate);
+
     List<LeaveRequest> findByStatusOrderByCreatedAtDesc(LeaveStatus status);
+
+    List<LeaveRequest> findByUserIdOrderByCreatedAtDesc(Long userId);
 }

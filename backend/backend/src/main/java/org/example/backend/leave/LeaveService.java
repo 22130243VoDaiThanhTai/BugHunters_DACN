@@ -92,6 +92,15 @@ public class LeaveService {
         }).toList();
     }
 
+    public List<LeaveRequestDto> getPersonalLeaveHistory(String email) {
+        AppUser user = findUserByEmail(email);
+
+        return leaveRequestRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
 
     public LeaveRequestDto createLeaveRequest(CreateLeaveRequestRequest request) {
         if (request.startDate() == null || request.endDate() == null) {
