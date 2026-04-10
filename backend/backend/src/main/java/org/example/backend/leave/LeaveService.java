@@ -68,8 +68,9 @@ public class LeaveService {
         AppUser manager = findUserByEmail(managerEmail);
 
         if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
-            throw new IllegalArgumentException("Access denied: Manager role required");
+            throw new RuntimeException("FORBIDDEN");
         }
+
 
         List<LeaveRequest> pendingRequests = leaveRequestRepository.findByStatusOrderByCreatedAtDesc(LeaveStatus.PENDING);
 
