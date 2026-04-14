@@ -6,6 +6,8 @@ import java.util.Map;
 import org.example.backend.leave.dto.PendingLeaveRequestDto;
 import org.example.backend.leave.dto.LeaveRequestDetailDto;
 import org.example.backend.leave.dto.ManagerDashboardStatsResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -65,6 +67,34 @@ public class AdminController {
                 return ResponseEntity.status(403).body(Map.of(
                         "success", false,
                         "message", "Access denied: Manager role required"
+                ));
+            }
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", ex.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/reports/monthly-export")
+    public ResponseEntity<?> exportMonthlyReport(
+            @RequestParam String email,
+            @RequestParam int month,
+            @RequestParam int year
+    ) {
+        try {
+            byte[] csvContent = leaveService.exportMonthlyLeaveReport(email, month, year);
+            String fileName = String.format("monthly_leave_report_%d_%02d.csv", year, month);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .contentType(MediaType.parseMediaType("text/csv"))
+                    .body(csvContent);
+        } catch (RuntimeException ex) {
+            if ("FORBIDDEN".equals(ex.getMessage())) {
+                return ResponseEntity.status(403).body(Map.of(
+                        "success", false,
+                        "message", "Access denied: Manager/Admin role required"
                 ));
             }
             return ResponseEntity.badRequest().body(Map.of(
