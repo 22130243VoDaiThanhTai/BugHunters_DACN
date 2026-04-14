@@ -4,6 +4,7 @@ type HistoryPageProps = {
     userEmail: string;
     onBackToDashboard: () => void;
     onNavigateToSubmit: () => void;
+    onViewDetail: (id: number) => void;
 };
 
 type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
@@ -664,7 +665,7 @@ const LeaveRequestDetail: React.FC<LeaveRequestDetailProps> = ({
     );
 };
 
-const HistoryPage: React.FC<HistoryPageProps> = ({ userEmail, onBackToDashboard }) => {
+const HistoryPage: React.FC<HistoryPageProps> = ({ userEmail, onBackToDashboard, onViewDetail }) => {
     const [loading, setLoading] = useState(true);
     const [requests, setRequests] = useState<LeaveRequestViewModel[]>([]);
     const [employeeName, setEmployeeName] = useState("");
@@ -753,9 +754,9 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ userEmail, onBackToDashboard 
     }, [requests, selectedRequest]);
 
     const openDetail = (item: LeaveRequestViewModel) => {
-        setSelectedRequest(item);
-        setViewMode("detail");
+        onViewDetail(item.id);
     };
+
 
     const closeDetail = () => {
         setSelectedRequest(null);

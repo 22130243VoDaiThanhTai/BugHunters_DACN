@@ -3,7 +3,7 @@ package org.example.backend.leave;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-
+import org.example.backend.leave.dto.LeaveDetailResponse;
 import org.example.backend.leave.dto.CreateLeaveRequestRequest;
 import org.example.backend.leave.dto.LeaveDashboardResponse;
 import org.example.backend.leave.dto.LeaveRequestDto;
@@ -144,6 +144,7 @@ public class LeaveService {
                 req.getReason(),
                 req.getStatus(),
                 req.getCreatedAt(),
+                req.getRejectionReason(),
                 balanceImpact,
                 teamAvailability
         );
@@ -159,6 +160,13 @@ public class LeaveService {
     }
 
     public LeaveRequestDto createLeaveRequest(CreateLeaveRequestRequest request) {
+
+        // DEBUG LOG (an toàn)
+        System.out.println(">>> REASON: " + request.reason());
+        System.out.println(">>> EMAIL: " + request.email());
+        System.out.println(">>> START: " + request.startDate());
+        System.out.println(">>> END: " + request.endDate());
+
         if (request.startDate() == null || request.endDate() == null) {
             throw new IllegalArgumentException("Start date and end date are required");
         }
@@ -178,10 +186,16 @@ public class LeaveService {
         leaveRequest.setEndDate(request.endDate());
         leaveRequest.setTotalDays((int) totalDays);
         leaveRequest.setReason(cleanReason(request.reason()));
+
         leaveRequest.setStatus(LeaveStatus.PENDING);
 
-        return toDto(leaveRequestRepository.save(leaveRequest));
+        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
+
+        System.out.println(">>> SAVED ID: " + saved.getId());
+
+        return toDto(saved);
     }
+
 
     @Transactional
     public LeaveRequestDto updateLeaveRequestStatus(Long requestId, UpdateLeaveRequestStatusRequest request) {
@@ -196,7 +210,14 @@ public class LeaveService {
             validateAnnualLimitBeforeApproval(leaveRequest);
         }
 
-        leaveRequest.setStatus(request.status());
+        LeaveStatus statusEnum = request.status();
+        leaveRequest.setStatus(statusEnum);
+
+        if (statusEnum == LeaveStatus.REJECTED) {
+            leaveRequest.setRejectionReason(request.reason());
+        }
+
+
 
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
@@ -207,6 +228,7 @@ public class LeaveService {
 
         return toDto(saved);
     }
+
 
     private AppUser findUserByEmail(String email) {
         if (email == null || email.isBlank()) {
@@ -224,7 +246,8 @@ public class LeaveService {
                 leaveRequest.getEndDate(),
                 leaveRequest.getTotalDays(),
                 leaveRequest.getReason(),
-                leaveRequest.getStatus()
+                leaveRequest.getStatus(),
+                leaveRequest.getRejectionReason()
         );
     }
 
@@ -278,6 +301,31 @@ public class LeaveService {
         if (approvedDays + requestDays > DEFAULT_TOTAL_DAYS) {
             throw new IllegalArgumentException("Exceed yearly limit");
         }
+    }
+    public LeaveDetailResponse getLeaveDetail(Long requestId, String email) {
+        LeaveRequest request = leaveRequestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+
+        AppUser user = appUserRepository.findById(request.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // check quyền
+        if (!user.getEmail().equals(email)) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+
+        return new LeaveDetailResponse(
+                request.getId(),
+                user.getFullName(),
+                user.getPosition(),
+                user.getDepartment(),
+                request.getStatus().name(),
+                request.getReason(),
+                request.getRejectionReason(),
+                request.getStartDate(),
+                request.getEndDate(),
+                request.getTotalDays()
+        );
     }
 
     private static Integer valueOrDefault(Integer value, Integer fallback) {

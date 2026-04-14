@@ -7,8 +7,10 @@ import SubmitRequestPage from './pages/SubmitRequestPage';
 import PendingRequestsPage from './pages/PendingRequestsPage';
 import HistoryPage from './pages/HistoryPage';
 import RequestDetailsPage from './pages/RequestDetailsPage';
+import LeaveDetail from './pages/LeaveDetail';
 
-type AppView = 'dashboard' | 'submit' | 'pending' | 'history' | 'detail';
+
+type AppView = 'dashboard' | 'submit' | 'pending' | 'history' | 'detail'| 'leaveDetail';
 
 // Dùng React.FC để định nghĩa type cho functional component
 const App: React.FC = () => {
@@ -16,6 +18,7 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(Boolean(localStorage.getItem('loggedInUser')));
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+  const [detailAction, setDetailAction] = useState<'view' | 'reject'>('view');
 
   const handleLoginSuccess = (loggedInEmail: string) => {
     localStorage.setItem('loggedInUser', loggedInEmail);
@@ -56,10 +59,12 @@ const App: React.FC = () => {
                     onBackToDashboard={() => setCurrentView('dashboard')}
                     onNavigateToSubmit={() => setCurrentView('submit')}
                     onNavigateToHistory={() => setCurrentView('history')}
-                    onViewDetails={(id) => {
-                        setSelectedRequestId(id);
-                        setCurrentView('detail');
+                    onViewDetails={(id, action = 'view') => {
+                      setSelectedRequestId(id);
+                      setDetailAction(action);
+                      setCurrentView('detail');
                     }}
+
                 />
             ) : currentView === 'detail' && selectedRequestId !== null ? (
                 <RequestDetailsPage
@@ -67,17 +72,29 @@ const App: React.FC = () => {
                     requestId={selectedRequestId}
                     onBack={() => setCurrentView('pending')}
                     onBackToDashboard={() => setCurrentView('dashboard')}
+                    initialAction={detailAction}
                 />
-            ) : (
+            ) : currentView === 'leaveDetail' && selectedRequestId !== null ? (
+                <LeaveDetail
+                    requestId={selectedRequestId}
+                    userEmail={loggedInUser}
+                    onBack={() => setCurrentView('history')}
+                />
+        ) : (
                 <HistoryPage
                     userEmail={loggedInUser}
                     onBackToDashboard={() => setCurrentView('dashboard')}
                     onNavigateToSubmit={() => setCurrentView('submit')}
+                    onViewDetail={(id) => {
+                      setSelectedRequestId(id);
+                      setCurrentView('leaveDetail');
+                    }}
                 />
             )
         ) : (
             <LoginPage key={`login-${isAuthenticated}`} onLoginSuccess={handleLoginSuccess} />
-        )}
+        )
+        }
 
       </div>
   );

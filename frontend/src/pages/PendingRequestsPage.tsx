@@ -26,7 +26,7 @@ type PendingRequestsPageProps = {
     onBackToDashboard: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToSubmit?: () => void;
-    onViewDetails?: (id: number) => void;
+    onViewDetails?: (id: number, action?: 'view' | 'reject') => void;
 };
 
 const API_URL = "http://localhost:8080/api/admin/pending-requests";
@@ -123,9 +123,10 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
     const handleAction = async (id: number, action: 'approve' | 'reject') => {
         try {
             const res = await fetch(
-                `http://localhost:8080/api/admin/requests/${id}/status?email=${userEmail}`,
+                `http://localhost:8080/api/leave/requests/${id}/status`,
+
                 {
-                    method: "PUT",
+                    method: "PATCH",
                     headers: {
                         "Content-Type": "application/json"
                     },
@@ -318,9 +319,13 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
                                         </td>
                                         <td>
                                             <div className="pr-actions">
-                                                <button className="pr-btn-reject" onClick={() => handleAction(req.id, 'reject')}>
+                                                <button
+                                                    className="pr-btn-reject"
+                                                    onClick={() => onViewDetails && onViewDetails(req.id)}
+                                                >
                                                     Reject
                                                 </button>
+
                                                 <button className="pr-btn-approve" onClick={() => handleAction(req.id, 'approve')}>
                                                     Approve
                                                 </button>
