@@ -2,7 +2,9 @@ package org.example.backend.leave;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
+import java.nio.charset.StandardCharsets;
 import org.example.backend.leave.dto.LeaveDetailResponse;
 import org.example.backend.leave.dto.CreateLeaveRequestRequest;
 import org.example.backend.leave.dto.ManagerDashboardStatsResponse;
@@ -71,7 +73,7 @@ public class LeaveService {
     public List<PendingLeaveRequestDto> getPendingRequests(String managerEmail) {
         AppUser manager = findUserByEmail(managerEmail);
 
-        if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
+        if (!hasManagerOrAdminRole(manager)) {
             throw new RuntimeException("FORBIDDEN");
         }
 
@@ -100,7 +102,7 @@ public class LeaveService {
     public ManagerDashboardStatsResponse getManagerDashboardStats(String managerEmail) {
         AppUser manager = findUserByEmail(managerEmail);
 
-        if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
+        if (!hasManagerOrAdminRole(manager)) {
             throw new RuntimeException("FORBIDDEN");
         }
 
@@ -133,7 +135,7 @@ public class LeaveService {
     public LeaveRequestDetailDto getLeaveRequestDetails(Long requestId, String managerEmail) {
         AppUser manager = findUserByEmail(managerEmail);
 
-        if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
+        if (!hasManagerOrAdminRole(manager)) {
             throw new IllegalArgumentException("Access denied: Manager role required");
         }
 
@@ -182,6 +184,57 @@ public class LeaveService {
                 balanceImpact,
                 teamAvailability
         );
+    }
+
+    public byte[] exportMonthlyLeaveReport(String managerEmail, int month, int year) {
+        AppUser manager = findUserByEmail(managerEmail);
+
+        if (!hasManagerOrAdminRole(manager)) {
+            throw new RuntimeException("FORBIDDEN");
+        }
+
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("Month must be between 1 and 12");
+        }
+
+        if (year < 2000 || year > 2100) {
+            throw new IllegalArgumentException("Year must be between 2000 and 2100");
+        }
+
+        LocalDate monthStart = LocalDate.of(year, month, 1);
+        LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+
+        List<LeaveStatus> exportStatuses = new ArrayList<>();
+        exportStatuses.add(LeaveStatus.APPROVED);
+        try {
+            exportStatuses.add(LeaveStatus.valueOf("TAKEN"));
+        } catch (IllegalArgumentException ignored) {
+            // TAKEN is optional depending on enum/database version.
+        }
+
+        List<LeaveRequestRepository.MonthlyLeaveExportRow> rows =
+                leaveRequestRepository.findMonthlyExportRows(exportStatuses, monthStart, monthEnd);
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Request ID,User ID,Employee Name,Email,Department,Position,Start Date,End Date,Total Days,Status,Reason,Created At\n");
+
+        for (LeaveRequestRepository.MonthlyLeaveExportRow row : rows) {
+            csv.append(valueOrEmpty(row.getRequestId())).append(',')
+                    .append(valueOrEmpty(row.getUserId())).append(',')
+                    .append(escapeCsv(row.getUserFullName())).append(',')
+                    .append(escapeCsv(row.getUserEmail())).append(',')
+                    .append(escapeCsv(row.getDepartment())).append(',')
+                    .append(escapeCsv(row.getPosition())).append(',')
+                    .append(valueOrEmpty(row.getStartDate())).append(',')
+                    .append(valueOrEmpty(row.getEndDate())).append(',')
+                    .append(valueOrEmpty(row.getTotalDays())).append(',')
+                    .append(valueOrEmpty(row.getStatus())).append(',')
+                    .append(escapeCsv(row.getReason())).append(',')
+                    .append(valueOrEmpty(row.getCreatedAt()))
+                    .append('\n');
+        }
+
+        return csv.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     public List<LeaveRequestDto> getPersonalLeaveHistory(String email) {
@@ -402,6 +455,27 @@ public class LeaveService {
 
     private static Integer valueOrDefault(Integer value, Integer fallback) {
         return value == null ? fallback : value;
+    }
+
+    private static String valueOrEmpty(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private static String escapeCsv(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        String sanitized = value.replace("\r", " ").replace("\n", " ").trim();
+        if (sanitized.contains(",") || sanitized.contains("\"") || sanitized.contains(";")) {
+            return '"' + sanitized.replace("\"", "\"\"") + '"';
+        }
+        return sanitized;
+    }
+
+    private static boolean hasManagerOrAdminRole(AppUser user) {
+        String role = user.getRole();
+        return "MANAGER".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role);
     }
 
     private static String cleanReason(String reason) {

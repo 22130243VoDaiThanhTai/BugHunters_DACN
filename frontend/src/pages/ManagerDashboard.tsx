@@ -48,6 +48,7 @@ type ManagerStatsResponse = {
 };
 
 const ManagerDashboard: React.FC<ManagerProps> = ({ userEmail, onLogout, onNavigateToPending }) => {
+    const now = new Date();
     const [managerName, setManagerName] = useState("Manager");
     const [pendingCount, setPendingCount] = useState(0);
     const [dashboardPendingCount, setDashboardPendingCount] = useState(0);
@@ -61,10 +62,35 @@ const ManagerDashboard: React.FC<ManagerProps> = ({ userEmail, onLogout, onNavig
     const [dataError, setDataError] = useState("");
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const [lastReadAt, setLastReadAt] = useState<string>("");
+    const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+    const [isExporting, setIsExporting] = useState(false);
     const previousPendingCountRef = useRef<number | null>(null);
     const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const notificationStorageKey = `manager:lastReadNotificationAt:${userEmail}`;
+
+    const monthOptions = useMemo(() => {
+        return [
+            { value: 1, label: "January" },
+            { value: 2, label: "February" },
+            { value: 3, label: "March" },
+            { value: 4, label: "April" },
+            { value: 5, label: "May" },
+            { value: 6, label: "June" },
+            { value: 7, label: "July" },
+            { value: 8, label: "August" },
+            { value: 9, label: "September" },
+            { value: 10, label: "October" },
+            { value: 11, label: "November" },
+            { value: 12, label: "December" },
+        ];
+    }, []);
+
+    const yearOptions = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        return Array.from({ length: 5 }, (_, index) => currentYear - 2 + index);
+    }, []);
 
     const deriveNameFromEmail = (email: string) => {
         const local = email.split('@')[0] || 'Manager';
@@ -329,6 +355,47 @@ const ManagerDashboard: React.FC<ManagerProps> = ({ userEmail, onLogout, onNavig
         }
     };
 
+    const handleExportMonthlyReport = async () => {
+        setIsExporting(true);
+        setDataError("");
+
+        try {
+            const response = await fetch(
+                `http://localhost:8080/api/admin/reports/monthly-export?email=${encodeURIComponent(userEmail)}&month=${selectedMonth}&year=${selectedYear}`,
+                { method: "GET" }
+            );
+
+            if (!response.ok) {
+                let errorMessage = "Failed to export monthly report";
+                try {
+                    const errorPayload = await response.json();
+                    errorMessage = errorPayload?.message || errorMessage;
+                } catch {
+                    // Ignore parse error and keep fallback message.
+                }
+                setDataError(errorMessage);
+                return;
+            }
+
+            const blob = await response.blob();
+            const fileName = `monthly_leave_report_${selectedYear}_${String(selectedMonth).padStart(2, "0")}.csv`;
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = downloadUrl;
+            anchor.download = fileName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+
+            showNotice("Monthly report exported successfully.");
+        } catch {
+            setDataError("Cannot export monthly report right now");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="dashboard-container">
             {/* --- SIDEBAR --- */}
@@ -488,14 +555,40 @@ const ManagerDashboard: React.FC<ManagerProps> = ({ userEmail, onLogout, onNavig
                             <div className="report-selectors">
                                 <div className="select-group">
                                     <label>MONTH</label>
-                                    <select><option>October</option></select>
+                                    <select
+                                        value={selectedMonth}
+                                        onChange={(event) => setSelectedMonth(Number(event.target.value))}
+                                        disabled={isExporting}
+                                    >
+                                        {monthOptions.map((month) => (
+                                            <option key={month.value} value={month.value}>
+                                                {month.label}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="select-group">
                                     <label>YEAR</label>
-                                    <select><option>2024</option></select>
+                                    <select
+                                        value={selectedYear}
+                                        onChange={(event) => setSelectedYear(Number(event.target.value))}
+                                        disabled={isExporting}
+                                    >
+                                        {yearOptions.map((year) => (
+                                            <option key={year} value={year}>
+                                                {year}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
-                            <button className="btn-export">📥 Export Monthly Report</button>
+                            <button
+                                className="btn-export"
+                                onClick={handleExportMonthlyReport}
+                                disabled={isExporting}
+                            >
+                                {isExporting ? "Exporting..." : "📥 Export Monthly Report"}
+                            </button>
                         </div>
                     </div>
 
