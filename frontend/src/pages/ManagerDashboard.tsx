@@ -1,11 +1,334 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import "../styles/ManagerDashboard.css"; 
 
 interface ManagerProps {
+    userEmail: string;
     onLogout: () => void;
+    onNavigateToPending: () => void;
 }
 
-const ManagerDashboard: React.FC<ManagerProps> = ({ onLogout }) => {
+type ManagerDashboardApiResponse = {
+    success: boolean;
+    message: string;
+    user?: {
+        fullName: string;
+        department: string;
+        role: string;
+    };
+    pendingCount?: number;
+};
+
+type PendingLeaveRequestDto = {
+    id: number;
+    userId: number;
+    userFullName: string;
+    userRole: string;
+    userPosition: string;
+    startDate: string;
+    endDate: string;
+    totalDays: number;
+    reason: string;
+    status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+    createdAt: string;
+};
+
+type PendingApiResponse = {
+    success: boolean;
+    message: string;
+    data: PendingLeaveRequestDto[];
+};
+
+type ManagerStatsResponse = {
+    success: boolean;
+    message: string;
+    pendingCount: number;
+    employeesWithPending: number;
+    approvedThisMonth: number;
+    rejectedThisMonth: number;
+};
+
+const ManagerDashboard: React.FC<ManagerProps> = ({ userEmail, onLogout, onNavigateToPending }) => {
+    const [managerName, setManagerName] = useState("Manager");
+    const [pendingCount, setPendingCount] = useState(0);
+    const [dashboardPendingCount, setDashboardPendingCount] = useState(0);
+    const [pendingListLoadFailed, setPendingListLoadFailed] = useState(false);
+    const [approvedThisMonth, setApprovedThisMonth] = useState(0);
+    const [rejectedThisMonth, setRejectedThisMonth] = useState(0);
+    const [employeesWithPending, setEmployeesWithPending] = useState(0);
+    const [pendingRequests, setPendingRequests] = useState<PendingLeaveRequestDto[]>([]);
+    const [managerNotice, setManagerNotice] = useState("");
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [dataError, setDataError] = useState("");
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [lastReadAt, setLastReadAt] = useState<string>("");
+    const previousPendingCountRef = useRef<number | null>(null);
+    const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const notificationStorageKey = `manager:lastReadNotificationAt:${userEmail}`;
+
+    const deriveNameFromEmail = (email: string) => {
+        const local = email.split('@')[0] || 'Manager';
+        return local
+            .replace(/[._-]+/g, ' ')
+            .split(' ')
+            .filter(Boolean)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+    };
+
+    const showNotice = (message: string) => {
+        setManagerNotice(message);
+
+        if (noticeTimerRef.current) {
+            clearTimeout(noticeTimerRef.current);
+        }
+
+        noticeTimerRef.current = setTimeout(() => {
+            setManagerNotice("");
+        }, 7000);
+    };
+
+    const formatPeriod = (startDate: string, endDate: string) => {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+            return "Invalid date";
+        }
+
+        const formatDate = (date: Date) => date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+        return `${formatDate(start)} - ${formatDate(end)}`;
+    };
+
+    const formatRelativeTime = (dateString: string) => {
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return "Recently";
+
+        const diffMs = Date.now() - date.getTime();
+        const minutes = Math.floor(diffMs / (1000 * 60));
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (minutes < 60) return `${Math.max(1, minutes)} minutes ago`;
+        if (hours < 24) return `${hours} hours ago`;
+        if (days < 7) return `${days} days ago`;
+        return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+    };
+
+    const recentActivities = useMemo(() => {
+        return pendingRequests.slice(0, 3).map((req) => ({
+            title: `New submission from ${req.userFullName}`,
+            time: formatRelativeTime(req.createdAt),
+            color: "blue",
+        }));
+    }, [pendingRequests]);
+
+    const notificationItems = useMemo(() => {
+        return pendingRequests
+            .slice(0, 10)
+            .map((req) => ({
+                id: req.id,
+                title: `Leave request from ${req.userFullName}`,
+                time: req.createdAt,
+                subtitle: `${req.userPosition || req.userRole} • ${req.totalDays} day(s) • ${formatPeriod(req.startDate, req.endDate)}`,
+            }));
+    }, [pendingRequests]);
+
+    const unreadCount = useMemo(() => {
+        if (!lastReadAt) return notificationItems.length;
+        const lastReadTime = new Date(lastReadAt).getTime();
+        return notificationItems.filter((item) => new Date(item.time).getTime() > lastReadTime).length;
+    }, [lastReadAt, notificationItems]);
+
+    const effectivePendingCount = useMemo(() => {
+        return Math.max(pendingCount, dashboardPendingCount, pendingRequests.length);
+    }, [pendingCount, dashboardPendingCount, pendingRequests.length]);
+
+    useEffect(() => {
+        const loadManagerDashboard = async () => {
+            setIsLoadingData(true);
+            setDataError("");
+            try {
+                const [dashboardRes, statsRes, pendingRes] = await Promise.all([
+                    fetch(`http://localhost:8080/api/leave/dashboard?email=${encodeURIComponent(userEmail)}&t=${Date.now()}`, { cache: "no-store" }),
+                    fetch(`http://localhost:8080/api/admin/dashboard-stats?email=${encodeURIComponent(userEmail)}&t=${Date.now()}`, { cache: "no-store" }),
+                    fetch(`http://localhost:8080/api/admin/pending-requests?email=${encodeURIComponent(userEmail)}&t=${Date.now()}`, { cache: "no-store" }),
+                ]);
+
+                let pendingFromList: PendingLeaveRequestDto[] = [];
+                let fallbackErrorMessage = "";
+
+                if (dashboardRes.ok) {
+                    const dashboardData: ManagerDashboardApiResponse = await dashboardRes.json();
+                    if (dashboardData.success) {
+                        setManagerName(dashboardData.user?.fullName || "Manager");
+                        setDashboardPendingCount(dashboardData.pendingCount || 0);
+                    }
+                } else {
+                    setManagerName(deriveNameFromEmail(userEmail));
+                    fallbackErrorMessage = "Không tải được dashboard cơ bản";
+                }
+
+                if (statsRes.ok) {
+                    const statsData: ManagerStatsResponse = await statsRes.json();
+                    if (statsData.success) {
+                        setApprovedThisMonth(statsData.approvedThisMonth || 0);
+                        setRejectedThisMonth(statsData.rejectedThisMonth || 0);
+                        setEmployeesWithPending(statsData.employeesWithPending || 0);
+                    }
+                }
+
+                if (pendingRes.ok) {
+                    const pendingData: PendingApiResponse = await pendingRes.json();
+                    if (pendingData.success) {
+                        pendingFromList = pendingData.data || [];
+                        setPendingRequests(pendingFromList);
+                        setPendingCount(pendingFromList.length);
+                        setPendingListLoadFailed(false);
+                    } else {
+                        setPendingListLoadFailed(true);
+                        fallbackErrorMessage = fallbackErrorMessage || pendingData.message || "Không tải được danh sách chờ duyệt";
+                    }
+                } else {
+                    setPendingListLoadFailed(true);
+                    try {
+                        const pendingError = await pendingRes.json();
+                        fallbackErrorMessage = fallbackErrorMessage || pendingError?.message || "Không tải được danh sách chờ duyệt";
+                    } catch {
+                        fallbackErrorMessage = fallbackErrorMessage || "Không tải được danh sách chờ duyệt";
+                    }
+                }
+
+                if (!statsRes.ok && pendingRes.ok) {
+                    const uniqueUsers = new Set(pendingFromList.map((request) => request.userId));
+                    setEmployeesWithPending(uniqueUsers.size);
+                }
+
+                if (!dashboardRes.ok && !pendingRes.ok && fallbackErrorMessage) {
+                    setDataError(fallbackErrorMessage);
+                }
+            } catch {
+                setManagerName(deriveNameFromEmail(userEmail));
+                setDataError("Không thể tải dữ liệu dashboard quản lý");
+            } finally {
+                setIsLoadingData(false);
+            }
+        };
+
+        if (userEmail) {
+            loadManagerDashboard();
+        }
+    }, [userEmail]);
+
+    useEffect(() => {
+        return () => {
+            if (noticeTimerRef.current) {
+                clearTimeout(noticeTimerRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        const saved = localStorage.getItem(notificationStorageKey);
+        if (saved) {
+            setLastReadAt(saved);
+        }
+    }, [notificationStorageKey]);
+
+    useEffect(() => {
+        if (!("Notification" in window)) return;
+
+        if (Notification.permission === "default") {
+            Notification.requestPermission().catch(() => {
+                // Ignore permission failures.
+            });
+        }
+    }, []);
+
+    useEffect(() => {
+        const previous = previousPendingCountRef.current;
+
+        if (previous === null) {
+            previousPendingCountRef.current = pendingCount;
+            return;
+        }
+
+        if (pendingCount > previous) {
+            const delta = pendingCount - previous;
+            const message = `${delta} new leave request${delta > 1 ? "s" : ""} need review.`;
+            showNotice(message);
+
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("New leave request", {
+                    body: message,
+                });
+            }
+        }
+
+        previousPendingCountRef.current = pendingCount;
+    }, [pendingCount]);
+
+    useEffect(() => {
+        if (!userEmail) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const [statsRes, pendingRes] = await Promise.all([
+                    fetch(`http://localhost:8080/api/admin/dashboard-stats?email=${encodeURIComponent(userEmail)}&t=${Date.now()}`, { cache: "no-store" }),
+                    fetch(`http://localhost:8080/api/admin/pending-requests?email=${encodeURIComponent(userEmail)}&t=${Date.now()}`, { cache: "no-store" }),
+                ]);
+
+                if (statsRes.ok) {
+                    const statsData: ManagerStatsResponse = await statsRes.json();
+                    if (statsData.success) {
+                        setApprovedThisMonth(statsData.approvedThisMonth || 0);
+                        setRejectedThisMonth(statsData.rejectedThisMonth || 0);
+                        setEmployeesWithPending(statsData.employeesWithPending || 0);
+                        setPendingCount(statsData.pendingCount || 0);
+                    }
+                }
+
+                if (pendingRes.ok) {
+                    const pendingData: PendingApiResponse = await pendingRes.json();
+                    if (pendingData.success) {
+                        const nextPending = pendingData.data || [];
+                        setPendingRequests(nextPending);
+                        setPendingCount(nextPending.length);
+                        setPendingListLoadFailed(false);
+
+                        if (!statsRes.ok) {
+                            const uniqueUsers = new Set(nextPending.map((request) => request.userId));
+                            setEmployeesWithPending(uniqueUsers.size);
+                        }
+                    } else {
+                        setPendingListLoadFailed(true);
+                    }
+                } else {
+                    setPendingListLoadFailed(true);
+                }
+            } catch {
+                // Silent polling failure.
+            }
+        }, 30000);
+
+        return () => clearInterval(interval);
+    }, [userEmail]);
+
+    const markAllNotificationsRead = () => {
+        const now = new Date().toISOString();
+        setLastReadAt(now);
+        localStorage.setItem(notificationStorageKey, now);
+    };
+
+    const handleNotificationBellClick = () => {
+        const nextOpen = !isNotificationOpen;
+        setIsNotificationOpen(nextOpen);
+
+        if (nextOpen) {
+            markAllNotificationsRead();
+        }
+    };
+
     return (
         <div className="dashboard-container">
             {/* --- SIDEBAR --- */}
@@ -24,29 +347,23 @@ const ManagerDashboard: React.FC<ManagerProps> = ({ onLogout }) => {
                 </div>
 
                 <nav className="menu">
-                    <a href="#" className="menu-item active">
+                    <button type="button" className="menu-item active">
                         <span className="icon">⊞</span> Dashboard
-                    </a>
-                    <a href="#" className="menu-item">
-                        <span className="icon">⊕</span> Submit Request
-                    </a>
-                    <a href="#" className="menu-item">
-                        <span className="icon">↺</span> History
-                    </a>
-                    <a href="#" className="menu-item">
+                    </button>
+                    <button type="button" className="menu-item" onClick={onNavigateToPending}>
                         <span className="icon">◷</span> Pending Requests
-                    </a>
+                    </button>
                 </nav>
 
                 <div className="sidebar-footer">
                     <div className="user-info-mini">
                         <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" alt="Avatar" />
                         <div className="user-text">
-                            <p className="user-name">Alex Sterling</p>
+                            <p className="user-name">{managerName}</p>
                             <p className="user-role">Department Manager</p>
                         </div>
                     </div>
-                    <button className="settings-btn">Settings</button>
+                    <button className="settings-btn" onClick={onLogout}>Logout</button>
                 </div>
             </aside>
 
@@ -55,16 +372,58 @@ const ManagerDashboard: React.FC<ManagerProps> = ({ onLogout }) => {
                 <header className="header">
                     <div className="header-left">
                         <h2>Manager Dashboard</h2>
-                        <p>Welcome back, Alex. Here's your overview.</p>
+                        <p>Welcome back, {managerName}. Here's your overview.</p>
                     </div>
                     <div className="header-right">
+                        {effectivePendingCount > 0 && <div className="pending-badge">{effectivePendingCount} pending</div>}
                         <div className="system-online">
                             <span className="online-dot"></span> System Online
                         </div>
-                        <button className="notif-btn">🔔</button>
+                        <button className="notif-btn" onClick={handleNotificationBellClick}>
+                            🔔
+                            {unreadCount > 0 && <span className="notif-count">{unreadCount}</span>}
+                        </button>
                         <button className="manager-btn" onClick={onLogout}>Manager ⮞</button>
                     </div>
                 </header>
+
+                {managerNotice && <div className="manager-notice">{managerNotice}</div>}
+
+                {dataError && <div className="manager-notice">{dataError}</div>}
+
+                {pendingListLoadFailed && (
+                    <div className="manager-notice">
+                        Pending list is temporarily unavailable. Count is using fallback source.
+                    </div>
+                )}
+
+                {isNotificationOpen && (
+                    <div className="manager-notification-center">
+                        <div className="manager-notification-head">
+                            <h4>Notification Center</h4>
+                            <button type="button" onClick={markAllNotificationsRead}>Mark all as read</button>
+                        </div>
+
+                        {notificationItems.length === 0 ? (
+                            <p className="manager-notification-empty">No notifications</p>
+                        ) : (
+                            <div className="manager-notification-list">
+                                {notificationItems.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        className="manager-notification-item"
+                                        onClick={onNavigateToPending}
+                                    >
+                                        <div className="manager-notification-title">{item.title}</div>
+                                        <div className="manager-notification-sub">{item.subtitle}</div>
+                                        <div className="manager-notification-time">{formatRelativeTime(item.time)}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="dashboard-body">
                     {/* Cột Trái */}
@@ -72,10 +431,10 @@ const ManagerDashboard: React.FC<ManagerProps> = ({ onLogout }) => {
                         {/* Banner Blue */}
                         <div className="urgent-banner">
                             <span className="banner-tag">URGENT REVIEW</span>
-                            <h1>12 Pending Requests</h1>
+                            <h1>{isLoadingData ? "Đang tải dữ liệu..." : `${effectivePendingCount} Pending Requests`}</h1>
                             <p>Requires your immediate approval for next week's roster.</p>
                             <div className="banner-actions">
-                                <button className="btn-white">Go to Pending Requests</button>
+                                <button className="btn-white" onClick={onNavigateToPending}>Go to Pending Requests</button>
                                 <button className="btn-outline">View Analytics</button>
                             </div>
                         </div>
@@ -84,12 +443,36 @@ const ManagerDashboard: React.FC<ManagerProps> = ({ onLogout }) => {
                         <div className="list-section-container">
                             <div className="list-header">
                                 <h3>Pending Approval List</h3>
-                                <button className="view-all-link">View All Requests</button>
+                                <button className="view-all-link" onClick={onNavigateToPending}>View All Requests</button>
                             </div>
                             <div className="approval-list">
-                                <ApprovalItem name="Jordan Davis" type="Annual Leave • 5 Days" period="Oct 12 - Oct 17" />
-                                <ApprovalItem name="Sarah Chen" type="Sick Leave • 2 Days" period="Oct 15 - Oct 16" />
-                                <ApprovalItem name="Marcus Reed" type="Paternity Leave • 10 Days" period="Nov 01 - Nov 10" />
+                                {isLoadingData ? (
+                                    <div className="approval-row">
+                                        <div className="row-user">
+                                            <div>
+                                                <p className="u-name">Đang tải danh sách chờ duyệt...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : pendingRequests.length === 0 ? (
+                                    <div className="approval-row">
+                                        <div className="row-user">
+                                            <div>
+                                                <p className="u-name">No pending requests</p>
+                                                <p className="u-type">All caught up</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    pendingRequests.slice(0, 5).map((request) => (
+                                        <ApprovalItem
+                                            key={request.id}
+                                            name={request.userFullName}
+                                            type={`${request.userPosition || request.userRole} • ${request.totalDays} Days`}
+                                            period={formatPeriod(request.startDate, request.endDate)}
+                                        />
+                                    ))
+                                )}
                             </div>
                         </div>
 
@@ -118,16 +501,25 @@ const ManagerDashboard: React.FC<ManagerProps> = ({ onLogout }) => {
 
                     {/* Cột Phải */}
                     <div className="body-right">
-                        <StatCard label="TOTAL EMPLOYEES" value="148" icon="👥" />
-                        <StatCard label="APPROVED THIS MONTH" value="64" icon="✅" active />
-                        <StatCard label="REJECTED" value="08" icon="❌" />
+                        <StatCard label="EMPLOYEES WITH PENDING" value={String(employeesWithPending)} icon="👥" />
+                        <StatCard label="APPROVED THIS MONTH" value={String(approvedThisMonth)} icon="✅" active />
+                        <StatCard label="REJECTED THIS MONTH" value={String(rejectedThisMonth)} icon="❌" />
 
                         <div className="activity-card">
                             <h3>Recent Activity</h3>
                             <div className="timeline">
-                                <ActivityItem title="Approved Request" time="2 hours ago" color="green" />
-                                <ActivityItem title="Rejected Request" time="5 hours ago" color="red" />
-                                <ActivityItem title="New Submission" time="Yesterday" color="blue" />
+                                {recentActivities.length === 0 ? (
+                                    <ActivityItem title="No recent pending activity" time="-" color="blue" />
+                                ) : (
+                                    recentActivities.map((activity) => (
+                                        <ActivityItem
+                                            key={`${activity.title}-${activity.time}`}
+                                            title={activity.title}
+                                            time={activity.time}
+                                            color={activity.color}
+                                        />
+                                    ))
+                                )}
                             </div>
                         </div>
 
@@ -148,7 +540,13 @@ const ManagerDashboard: React.FC<ManagerProps> = ({ onLogout }) => {
 };
 
 // Sub-components
-const ApprovalItem = ({ name, type, period }: any) => (
+type ApprovalItemProps = {
+    name: string;
+    type: string;
+    period: string;
+};
+
+const ApprovalItem = ({ name, type, period }: ApprovalItemProps) => (
     <div className="approval-row">
         <div className="row-user">
             <div className="user-avatar-small"></div>
@@ -165,7 +563,14 @@ const ApprovalItem = ({ name, type, period }: any) => (
     </div>
 );
 
-const StatCard = ({ label, value, icon, active }: any) => (
+type StatCardProps = {
+    label: string;
+    value: string;
+    icon: string;
+    active?: boolean;
+};
+
+const StatCard = ({ label, value, icon, active }: StatCardProps) => (
     <div className={`stat-card-v2 ${active ? 'active' : ''}`}>
         <div className="stat-info">
             <label>{label}</label>
@@ -175,7 +580,13 @@ const StatCard = ({ label, value, icon, active }: any) => (
     </div>
 );
 
-const ActivityItem = ({ title, time, color }: any) => (
+type ActivityItemProps = {
+    title: string;
+    time: string;
+    color: string;
+};
+
+const ActivityItem = ({ title, time, color }: ActivityItemProps) => (
     <div className="activity-row">
         <div className={`activity-dot ${color}`}></div>
         <div className="activity-text">

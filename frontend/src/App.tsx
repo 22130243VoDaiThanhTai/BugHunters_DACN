@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from
 import './App.css';
 import LoginPage from './pages/LoginPage';
 import EmployeeDashboard from './pages/EmployeeDashboard';
+import ManagerDashboard from './pages/ManagerDashboard';
 import SubmitRequestPage from './pages/SubmitRequestPage';
 import PendingRequestsPage from './pages/PendingRequestsPage';
 import HistoryPage from './pages/HistoryPage';
@@ -58,7 +59,9 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const [loggedInUser, setLoggedInUser] = useState<string>('');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [userRole, setUserRole] = useState<'EMPLOYEE' | 'MANAGER' | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [roleReady, setRoleReady] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('loggedInUser');
@@ -70,6 +73,36 @@ const App: React.FC = () => {
 
     setAuthReady(true);
   }, []);
+
+  useEffect(() => {
+    const loadRole = async () => {
+      if (!isAuthenticated || !loggedInUser) {
+        setUserRole(null);
+        setRoleReady(true);
+        return;
+      }
+
+      try {
+        setRoleReady(false);
+        const response = await fetch(`http://localhost:8080/api/leave/dashboard?email=${encodeURIComponent(loggedInUser)}`);
+        const data = await response.json();
+
+        if (response.ok && data?.success && data?.user?.role) {
+          const roleValue = String(data.user.role).toUpperCase();
+          setUserRole(roleValue === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE');
+          return;
+        }
+
+        setUserRole('EMPLOYEE');
+      } catch {
+        setUserRole('EMPLOYEE');
+      } finally {
+        setRoleReady(true);
+      }
+    };
+
+    loadRole();
+  }, [isAuthenticated, loggedInUser]);
 
   const handleLoginSuccess = (loggedInEmail: string) => {
     localStorage.setItem('loggedInUser', loggedInEmail);
@@ -83,12 +116,16 @@ const App: React.FC = () => {
     sessionStorage.clear();
     setLoggedInUser('');
     setIsAuthenticated(false);
+    setUserRole(null);
+    setRoleReady(false);
     navigate('/login', { replace: true });
   };
 
-  if (!authReady) {
+  if (!authReady || (isAuthenticated && !roleReady)) {
     return <div className="App" />;
   }
+
+  const isManager = userRole === 'MANAGER';
 
   return (
     <div className="App">
@@ -105,13 +142,21 @@ const App: React.FC = () => {
           path="/dashboard"
           element={
             <RequireAuth isAuthenticated={isAuthenticated}>
-              <EmployeeDashboard
-                userEmail={loggedInUser}
-                onLogout={handleLogout}
-                onNavigateToSubmit={() => navigate('/submit')}
-                onNavigateToPending={() => navigate('/pending')}
-                onNavigateToHistory={() => navigate('/history')}
-              />
+              {isManager ? (
+                <ManagerDashboard
+                  userEmail={loggedInUser}
+                  onLogout={handleLogout}
+                  onNavigateToPending={() => navigate('/pending')}
+                />
+              ) : (
+                <EmployeeDashboard
+                  userEmail={loggedInUser}
+                  onLogout={handleLogout}
+                  onNavigateToSubmit={() => navigate('/submit')}
+                  onNavigateToPending={() => navigate('/pending')}
+                  onNavigateToHistory={() => navigate('/history')}
+                />
+              )}
             </RequireAuth>
           }
         />
@@ -119,11 +164,15 @@ const App: React.FC = () => {
           path="/submit"
           element={
             <RequireAuth isAuthenticated={isAuthenticated}>
-              <SubmitRequestPage
-                userEmail={loggedInUser}
-                onBackToDashboard={() => navigate('/dashboard')}
-                onNavigateToHistory={() => navigate('/history')}
-              />
+              {isManager ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <SubmitRequestPage
+                  userEmail={loggedInUser}
+                  onBackToDashboard={() => navigate('/dashboard')}
+                  onNavigateToHistory={() => navigate('/history')}
+                />
+              )}
             </RequireAuth>
           }
         />
@@ -134,8 +183,8 @@ const App: React.FC = () => {
               <PendingRequestsPage
                 userEmail={loggedInUser}
                 onBackToDashboard={() => navigate('/dashboard')}
-                onNavigateToSubmit={() => navigate('/submit')}
-                onNavigateToHistory={() => navigate('/history')}
+                onNavigateToSubmit={!isManager ? () => navigate('/submit') : undefined}
+                onNavigateToHistory={!isManager ? () => navigate('/history') : undefined}
                 onViewDetails={(id, action = 'view') => navigate(`/pending/${id}?action=${action}`)}
               />
             </RequireAuth>
@@ -153,12 +202,16 @@ const App: React.FC = () => {
           path="/history"
           element={
             <RequireAuth isAuthenticated={isAuthenticated}>
-              <HistoryPage
-                userEmail={loggedInUser}
-                onBackToDashboard={() => navigate('/dashboard')}
-                onNavigateToSubmit={() => navigate('/submit')}
-                onViewDetail={(id) => navigate(`/history/${id}`)}
-              />
+              {isManager ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <HistoryPage
+                  userEmail={loggedInUser}
+                  onBackToDashboard={() => navigate('/dashboard')}
+                  onNavigateToSubmit={() => navigate('/submit')}
+                  onViewDetail={(id) => navigate(`/history/${id}`)}
+                />
+              )}
             </RequireAuth>
           }
         />
@@ -166,7 +219,7 @@ const App: React.FC = () => {
           path="/history/:requestId"
           element={
             <RequireAuth isAuthenticated={isAuthenticated}>
-              <HistoryDetailRoute userEmail={loggedInUser} />
+              {isManager ? <Navigate to="/dashboard" replace /> : <HistoryDetailRoute userEmail={loggedInUser} />}
             </RequireAuth>
           }
         />
