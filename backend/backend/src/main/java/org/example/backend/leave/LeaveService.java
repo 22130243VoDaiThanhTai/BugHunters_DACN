@@ -5,6 +5,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.example.backend.leave.dto.LeaveDetailResponse;
 import org.example.backend.leave.dto.CreateLeaveRequestRequest;
+import org.example.backend.leave.dto.ManagerDashboardStatsResponse;
 import org.example.backend.leave.dto.LeaveDashboardResponse;
 import org.example.backend.leave.dto.LeaveRequestDto;
 import org.example.backend.leave.dto.UpdateLeaveRequestStatusRequest;
@@ -94,6 +95,39 @@ public class LeaveService {
                     req.getCreatedAt()
             );
         }).toList();
+    }
+
+    public ManagerDashboardStatsResponse getManagerDashboardStats(String managerEmail) {
+        AppUser manager = findUserByEmail(managerEmail);
+
+        if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
+            throw new RuntimeException("FORBIDDEN");
+        }
+
+        LocalDate monthStart = LocalDate.now().withDayOfMonth(1);
+        LocalDate monthEnd = monthStart.plusMonths(1).minusDays(1);
+
+        long pendingCount = leaveRequestRepository.countByStatus(LeaveStatus.PENDING);
+        long employeesWithPending = leaveRequestRepository.countDistinctUsersByStatus(LeaveStatus.PENDING);
+        long approvedThisMonth = leaveRequestRepository.countByStatusAndStartDateBetween(
+                LeaveStatus.APPROVED,
+                monthStart,
+                monthEnd
+        );
+        long rejectedThisMonth = leaveRequestRepository.countByStatusAndStartDateBetween(
+                LeaveStatus.REJECTED,
+                monthStart,
+                monthEnd
+        );
+
+        return new ManagerDashboardStatsResponse(
+                true,
+                "Manager dashboard stats loaded successfully",
+                pendingCount,
+                employeesWithPending,
+                approvedThisMonth,
+                rejectedThisMonth
+        );
     }
 
     public LeaveRequestDetailDto getLeaveRequestDetails(Long requestId, String managerEmail) {

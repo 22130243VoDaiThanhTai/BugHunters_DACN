@@ -140,7 +140,7 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
 
             if (data.success) {
                 alert("Cập nhật thành công ");
-                loadRequests(); // reload lại list
+                setRequests((prev) => prev.filter((request) => request.id !== id));
             } else {
                 alert(data.message);
             }
@@ -180,12 +180,16 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
                     <button className="ed-nav__btn" onClick={onBackToDashboard}>
                         <span className="ed-nav__icon"><IconDashboard /></span> Dashboard
                     </button>
-                    <button className="ed-nav__btn" onClick={onNavigateToSubmit}>
-                        <span className="ed-nav__icon"><IconRequest /></span> Submit Request
-                    </button>
-                    <button className="ed-nav__btn" onClick={onNavigateToHistory}>
-                        <span className="ed-nav__icon"><IconHistory /></span> History
-                    </button>
+                    {onNavigateToSubmit && (
+                        <button className="ed-nav__btn" onClick={onNavigateToSubmit}>
+                            <span className="ed-nav__icon"><IconRequest /></span> Submit Request
+                        </button>
+                    )}
+                    {onNavigateToHistory && (
+                        <button className="ed-nav__btn" onClick={onNavigateToHistory}>
+                            <span className="ed-nav__icon"><IconHistory /></span> History
+                        </button>
+                    )}
                     <button className="ed-nav__btn ed-nav__btn--active">
                         <span className="ed-nav__icon"><IconPending /></span> Pending Requests
                     </button>

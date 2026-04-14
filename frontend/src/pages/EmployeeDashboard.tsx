@@ -278,9 +278,14 @@
         // Filter nav items based on user role
         const filteredNavItems = useMemo(() => {
             return NAV_ITEMS.filter((item) => {
-                if (item.id === "pending") {
-                    return user?.role === "MANAGER";
+                if (user?.role === "MANAGER") {
+                    return item.id === "dashboard" || item.id === "pending";
                 }
+
+                if (item.id === "pending") {
+                    return false;
+                }
+
                 return true;
             });
         }, [user?.role]);
@@ -405,13 +410,15 @@
                             <div className="ed-table-card">
                                 <div className="ed-table-card__header">
                                     <span className="ed-table-card__title">Recent Leave Requests</span>
-                                    <button
-                                        type="button"
-                                        className="ed-link-btn"
-                                        onClick={() => onNavigateToHistory?.()}
-                                    >
-                                        View Full History
-                                    </button>
+                                    {user?.role !== "MANAGER" && (
+                                        <button
+                                            type="button"
+                                            className="ed-link-btn"
+                                            onClick={() => onNavigateToHistory?.()}
+                                        >
+                                            View Full History
+                                        </button>
+                                    )}
                                 </div>
                                 <table className="ed-table">
                                     <thead>
@@ -444,14 +451,16 @@
                         </div>
 
                         <div className="ed-right">
-                            <div className="ed-new-request">
-                                <div className="ed-new-request__circle">
-                                    <IconPlus />
+                            {user?.role !== "MANAGER" && (
+                                <div className="ed-new-request">
+                                    <div className="ed-new-request__circle">
+                                        <IconPlus />
+                                    </div>
+                                    <div className="ed-new-request__title">Need a break?</div>
+                                    <p className="ed-new-request__desc">Submit your next leave request in seconds.</p>
+                                    <button className="ed-new-request__btn" onClick={onNavigateToSubmit}>New Request</button>
                                 </div>
-                                <div className="ed-new-request__title">Need a break?</div>
-                                <p className="ed-new-request__desc">Submit your next leave request in seconds.</p>
-                                <button className="ed-new-request__btn" onClick={onNavigateToSubmit}>New Request</button>
-                            </div>
+                            )}
 
                             <div className="ed-pulse">
                                 <div className="ed-pulse__title">TEAM AVAILABILITY PULSE</div>

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.example.backend.leave.dto.PendingLeaveRequestDto;
 import org.example.backend.leave.dto.LeaveRequestDetailDto;
+import org.example.backend.leave.dto.ManagerDashboardStatsResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -50,6 +51,25 @@ public class AdminController {
             return ResponseEntity.internalServerError().body(Map.of(
                     "success", false,
                     "message", "Unexpected error occurred"
+            ));
+        }
+    }
+
+    @GetMapping("/dashboard-stats")
+    public ResponseEntity<?> getManagerDashboardStats(@RequestParam String email) {
+        try {
+            ManagerDashboardStatsResponse stats = leaveService.getManagerDashboardStats(email);
+            return ResponseEntity.ok(stats);
+        } catch (RuntimeException ex) {
+            if ("FORBIDDEN".equals(ex.getMessage())) {
+                return ResponseEntity.status(403).body(Map.of(
+                        "success", false,
+                        "message", "Access denied: Manager role required"
+                ));
+            }
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", ex.getMessage()
             ));
         }
     }

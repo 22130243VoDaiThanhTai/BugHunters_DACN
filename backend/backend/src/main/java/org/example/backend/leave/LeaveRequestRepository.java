@@ -15,6 +15,11 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
 
     long countByStatus(LeaveStatus status);
 
+        long countByStatusAndStartDateBetween(LeaveStatus status, LocalDate start, LocalDate end);
+
+        @Query("SELECT COUNT(DISTINCT l.userId) FROM LeaveRequest l WHERE l.status = :status")
+        long countDistinctUsersByStatus(@Param("status") LeaveStatus status);
+
     List<LeaveRequest> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     @Query("SELECT SUM(l.totalDays) FROM LeaveRequest l " +
