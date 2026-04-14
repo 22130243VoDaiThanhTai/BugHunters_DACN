@@ -229,6 +229,44 @@ public class LeaveService {
         return toDto(saved);
     }
 
+    @Transactional
+    public LeaveRequestDto cancelLeaveRequest(Long requestId, String userEmail) {
+        if (requestId == null) {
+            throw new IllegalArgumentException("Request ID is required");
+        }
+        if (userEmail == null || userEmail.isBlank()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+
+        AppUser user = findUserByEmail(userEmail);
+
+        LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Leave request not found"));
+
+        // Verify the request belongs to the user
+        if (!leaveRequest.getUserId().equals(user.getId())) {
+            throw new IllegalArgumentException("You can only cancel your own leave requests");
+        }
+
+        // Only PENDING requests can be cancelled
+        if (leaveRequest.getStatus() != LeaveStatus.PENDING) {
+            throw new IllegalArgumentException(
+                "Can only cancel PENDING requests. Current status: " + leaveRequest.getStatus()
+            );
+        }
+
+        leaveRequest.setStatus(LeaveStatus.CANCELLED);
+        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
+
+        // Keep leave_balance table consistent; sync logic only counts APPROVED requests.
+        syncAndGetLeaveBalanceSummary(
+            saved.getUserId(),
+            saved.getStartDate().getYear()
+        );
+
+        return toDto(saved);
+    }
+
 
     private AppUser findUserByEmail(String email) {
         if (email == null || email.isBlank()) {
