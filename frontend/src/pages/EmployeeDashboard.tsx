@@ -1,4 +1,4 @@
-    import React, { useEffect, useMemo, useState } from "react";
+    import React, { useEffect, useMemo, useRef, useState } from "react";
     import "../styles/EmployeeDashboard.css";
 
     type NavItem = { id: string; label: string; icon: React.ReactNode };
@@ -131,6 +131,9 @@
         const [dashboardData, setDashboardData] = useState<DashboardApiResponse | null>(null);
         const [loading, setLoading] = useState(true);
         const [error, setError] = useState<string>("");
+        const [managerNotice, setManagerNotice] = useState<string>("");
+        const previousPendingCountRef = useRef<number | null>(null);
+        const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
         const loadDashboard = async () => {
             if (!userEmail) {
@@ -169,6 +172,80 @@
         const leaveBalance = dashboardData?.leaveBalance;
         const leaveRequests = dashboardData?.recentRequests ?? [];
         const pendingCount = dashboardData?.pendingCount ?? 0;
+
+        const showManagerNotice = (message: string) => {
+            setManagerNotice(message);
+
+            if (noticeTimerRef.current) {
+                clearTimeout(noticeTimerRef.current);
+            }
+
+            noticeTimerRef.current = setTimeout(() => {
+                setManagerNotice("");
+            }, 6000);
+        };
+
+        useEffect(() => {
+            return () => {
+                if (noticeTimerRef.current) {
+                    clearTimeout(noticeTimerRef.current);
+                }
+            };
+        }, []);
+
+        useEffect(() => {
+            if (user?.role !== "MANAGER") return;
+            if (!("Notification" in window)) return;
+
+            if (Notification.permission === "default") {
+                Notification.requestPermission().catch(() => {
+                    // Ignore permission errors in unsupported browser flows.
+                });
+            }
+        }, [user?.role]);
+
+        useEffect(() => {
+            if (user?.role !== "MANAGER") return;
+
+            const previousCount = previousPendingCountRef.current;
+            if (previousCount === null) {
+                previousPendingCountRef.current = pendingCount;
+                return;
+            }
+
+            if (pendingCount > previousCount) {
+                const newItems = pendingCount - previousCount;
+                const message = `You have ${newItems} new leave request${newItems > 1 ? "s" : ""} to review.`;
+                showManagerNotice(message);
+
+                if ("Notification" in window && Notification.permission === "granted") {
+                    new Notification("New leave request", {
+                        body: message,
+                    });
+                }
+            }
+
+            previousPendingCountRef.current = pendingCount;
+        }, [pendingCount, user?.role]);
+
+        useEffect(() => {
+            if (!userEmail) return;
+
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_URL}?email=${encodeURIComponent(userEmail)}`);
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        setDashboardData(data as DashboardApiResponse);
+                    }
+                } catch {
+                    // Silent polling failure; user still has manual retry.
+                }
+            }, 30000);
+
+            return () => clearInterval(interval);
+        }, [userEmail]);
 
         const initials = useMemo(() => {
             const fullName = user?.fullName || "User";
@@ -258,6 +335,11 @@
                     <header className="ed-topbar">
                         <h2 className="ed-topbar__title">Dashboard</h2>
                         <div className="ed-topbar__user">
+                            {user?.role === "MANAGER" && pendingCount > 0 && (
+                                <button className="ed-pending-chip" onClick={onNavigateToPending}>
+                                    {pendingCount} pending
+                                </button>
+                            )}
                             <div className="ed-topbar__user-info">
                                 <span className="ed-topbar__user-name">{user?.fullName || "Employee"}</span>
                                 <span className="ed-topbar__user-role">{capitalize(user?.role || "employee")}</span>
@@ -271,6 +353,10 @@
 
                     <div className="ed-content">
                         <div className="ed-left">
+                            {user?.role === "MANAGER" && managerNotice && (
+                                <div className="ed-manager-notice">{managerNotice}</div>
+                            )}
+
                             {error && (
                                 <div className="ed-table-card" style={{ marginBottom: 16 }}>
                                     <span>{error}</span>
@@ -294,7 +380,7 @@
                                         <div className="ed-pending-banner__label">Pending Actions</div>
                                         <div className="ed-pending-banner__title">You have {pendingCount} pending requests</div>
                                         <div className="ed-pending-banner__desc">Review your team's upcoming leave schedule.</div>
-                                        <button className="ed-review-btn">Review All</button>
+                                        <button className="ed-review-btn" onClick={onNavigateToPending}>Review All</button>
                                     </div>
                                 )}
                             </div>
@@ -319,7 +405,13 @@
                             <div className="ed-table-card">
                                 <div className="ed-table-card__header">
                                     <span className="ed-table-card__title">Recent Leave Requests</span>
-                                    <button className="ed-link-btn">View Full History</button>
+                                    <button
+                                        type="button"
+                                        className="ed-link-btn"
+                                        onClick={() => onNavigateToHistory?.()}
+                                    >
+                                        View Full History
+                                    </button>
                                 </div>
                                 <table className="ed-table">
                                     <thead>

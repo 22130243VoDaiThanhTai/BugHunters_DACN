@@ -359,6 +359,7 @@ type LeaveRequestDetailProps = {
     availabilityPercent: number;
     overlapCount: number;
     onBack: () => void;
+    onCancel?: (requestId: number) => void;
 };
 
 const LeaveRequestDetail: React.FC<LeaveRequestDetailProps> = ({
@@ -371,6 +372,7 @@ const LeaveRequestDetail: React.FC<LeaveRequestDetailProps> = ({
                                                                    availabilityPercent,
                                                                    overlapCount,
                                                                    onBack,
+                                                                   onCancel,
                                                                }) => {
     const statusStyle = getStatusColors(item.status);
     const avatarUrl = getAvatarUrl(employeeName);
@@ -550,22 +552,45 @@ const LeaveRequestDetail: React.FC<LeaveRequestDetailProps> = ({
                         </div>
 
                         <div style={{ marginTop: 24 }}>
-                            <button
-                                type="button"
-                                onClick={onBack}
-                                style={{
-                                    width: "100%",
-                                    border: "none",
-                                    background: palette.primary,
-                                    color: "#fff",
-                                    height: 44,
-                                    borderRadius: 10,
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                }}
-                            >
-                                Cancel
-                            </button>
+                            {item.status === "PENDING" ? (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (onCancel && window.confirm("Are you sure you want to cancel this leave request?")) {
+                                            onCancel(item.id);
+                                        }
+                                    }}
+                                    style={{
+                                        width: "100%",
+                                        border: "none",
+                                        background: palette.danger,
+                                        color: "#fff",
+                                        height: 44,
+                                        borderRadius: 10,
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Cancel Request
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={onBack}
+                                    style={{
+                                        width: "100%",
+                                        border: "none",
+                                        background: palette.primary,
+                                        color: "#fff",
+                                        height: 44,
+                                        borderRadius: 10,
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Back
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -757,6 +782,39 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ userEmail, onBackToDashboard,
         onViewDetail(item.id);
     };
 
+    const handleCancel = async (requestId: number) => {
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/leave/requests/${requestId}/cancel?email=${encodeURIComponent(userEmail)}`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            const data = await res.json();
+
+            if (data.success) {
+                alert("Leave request cancelled successfully");
+                // Update the requests list
+                setRequests((prev) =>
+                    prev.map((req) =>
+                        req.id === requestId ? { ...req, status: "CANCELLED" } : req
+                    )
+                );
+                // Go back to list view
+                setSelectedRequest(null);
+                setViewMode("list");
+            } else {
+                alert(data.message || "Failed to cancel request");
+            }
+        } catch (error) {
+            alert("Error cancelling request. Please try again.");
+            console.error(error);
+        }
+    };
 
     const closeDetail = () => {
         setSelectedRequest(null);
@@ -924,6 +982,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ userEmail, onBackToDashboard,
                     availabilityPercent={availabilityPercent}
                     overlapCount={overlapCount}
                     onBack={closeDetail}
+                    onCancel={handleCancel}
                 />
             ) : null}
 

@@ -104,4 +104,21 @@ public class LeaveController {
                     "message", ex.getMessage()));
         }
     }
+
+    @PatchMapping("/requests/{requestId}/cancel")
+    public ResponseEntity<?> cancelLeaveRequest(
+            @PathVariable Long requestId,
+            @RequestParam String email) {
+        try {
+            LeaveRequestDto cancelledRequest = leaveService.cancelLeaveRequest(requestId, email);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Leave request cancelled successfully",
+                    "request", cancelledRequest));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", ex.getMessage()));
+        }
+    }
 }

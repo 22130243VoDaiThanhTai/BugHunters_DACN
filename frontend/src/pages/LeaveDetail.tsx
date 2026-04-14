@@ -8,6 +8,28 @@ type LeaveDetailProps = {
     onBack: () => void;
 };
 
+type LeaveDetailApiResponse = {
+    employeeName?: string;
+    position?: string;
+    department?: string;
+    role?: string;
+    status?: string;
+    reason?: string;
+    rejectionReason?: string;
+    startDate?: string;
+    endDate?: string;
+    totalDays?: number;
+    teamAvailability?: {
+        team?: string;
+        availabilityPercentage?: number;
+        message?: string;
+    };
+    balanceImpact?: {
+        currentDays?: number;
+        remainingDays?: number;
+    };
+};
+
 // --- CÁC ICON SVG ---
 const IconDashboard = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
@@ -25,9 +47,23 @@ const IconChat = ({ color }: { color: string }) => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
 );
 
+const deriveNameFromEmail = (email: string) => {
+    const local = email.split('@')[0] || 'User';
+    return local
+        .replace(/[._-]+/g, ' ')
+        .split(' ')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
 const LeaveDetail: React.FC<LeaveDetailProps> = ({ requestId, userEmail, onBack }) => {
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<LeaveDetailApiResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [cancelling, setCancelling] = useState(false);
+    const displayName = data?.employeeName || deriveNameFromEmail(userEmail);
+    const displayRole = data?.position || data?.role || 'Employee';
+    const displayDepartment = data?.department || 'Employee Portal';
 
     // LOGIC BACKEND - GIỮ NGUYÊN KHÔNG ĐỔI
     useEffect(() => {
@@ -48,11 +84,41 @@ const LeaveDetail: React.FC<LeaveDetailProps> = ({ requestId, userEmail, onBack 
         fetchDetail();
     }, [requestId, userEmail]);
 
+    const handleCancelRequest = async () => {
+        if (!window.confirm('Are you sure you want to cancel this leave request?')) {
+            return;
+        }
+
+        try {
+            setCancelling(true);
+
+            const response = await axios.patch(
+                `http://localhost:8080/api/leave/requests/${requestId}/cancel`,
+                null,
+                { params: { email: userEmail } }
+            );
+
+            if (response.data?.success) {
+                alert('Leave request cancelled successfully');
+                onBack();
+                return;
+            }
+
+            alert(response.data?.message || 'Failed to cancel request');
+        } catch (error: any) {
+            const message = error?.response?.data?.message || 'Cannot cancel request';
+            alert(message);
+            console.error('❌ Error cancelling leave request:', error);
+        } finally {
+            setCancelling(false);
+        }
+    };
+
     if (loading) return <div className="ld-loading">Loading request details...</div>;
     if (!data) return <div className="ld-loading">No data found</div>;
 
     // Helper format ngày
-    const formatDate = (dateString: string) => {
+    const formatDate = (dateString?: string) => {
         if (!dateString) return '';
         const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
         return new Date(dateString).toLocaleDateString('en-US', options);
@@ -66,20 +132,20 @@ const LeaveDetail: React.FC<LeaveDetailProps> = ({ requestId, userEmail, onBack 
                     <div className="ld-logo-icon">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
                     </div>
-                    <div className="ld-logo-text">
-                        <div className="ld-logo-title">Employee</div>
-                        <div className="ld-logo-subtitle">EMPLOYEE PORTAL</div>
-                    </div>
+                        <div className="ld-logo-text">
+                            <div className="ld-logo-title">{displayName}</div>
+                            <div className="ld-logo-subtitle">{displayDepartment}</div>
+                        </div>
                 </div>
 
                 <nav className="ld-nav">
                     <button className="ld-nav-item" onClick={onBack}>
                         <IconDashboard /> Dashboard
                     </button>
-                    <button className="ld-nav-item">
+                    <button className="ld-nav-item" onClick={onBack}>
                         <IconRequest /> Submit Request
                     </button>
-                    <button className="ld-nav-item">
+                    <button className="ld-nav-item" onClick={onBack}>
                         <IconHistory /> History
                     </button>
                 </nav>
@@ -104,10 +170,10 @@ const LeaveDetail: React.FC<LeaveDetailProps> = ({ requestId, userEmail, onBack 
                     {/* Mock Profile Top Right */}
                     <div className="ld-header-right">
                         <div className="ld-user-mini">
-                            <img src="https://ui-avatars.com/api/?name=User&background=F3F4F6&color=374151" alt="Avatar" className="ld-mini-avatar" />
+                            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=F3F4F6&color=374151`} alt="Avatar" className="ld-mini-avatar" />
                             <div className="ld-mini-info">
-                                <span className="ld-mini-name">{userEmail.split('@')[0]}</span>
-                                <span className="ld-mini-role">EMPLOYEE</span>
+                                <span className="ld-mini-name">{displayName}</span>
+                                <span className="ld-mini-role">{displayRole}</span>
                             </div>
                         </div>
                         <button className="ld-icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></button>
@@ -137,7 +203,7 @@ const LeaveDetail: React.FC<LeaveDetailProps> = ({ requestId, userEmail, onBack 
                                         <div className="ld-badges">
                                             <span className="ld-badge ld-badge-reject-outline">
                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                                                {data.role || "REJECT APPROVAL"}
+                                                {data.role || displayRole}
                                             </span>
                                             <span className="ld-badge ld-badge-gray">
                                                 {data.status === 'REJECTED' ? 'REJECTED' : 'FULL-TIME'}
@@ -231,10 +297,20 @@ const LeaveDetail: React.FC<LeaveDetailProps> = ({ requestId, userEmail, onBack 
                             </section>
                         </div>
 
-                        {/* NÚT CANCEL FULL WIDTH TRONG CARD */}
-                        <button onClick={onBack} className="ld-cancel-btn-full">
-                            Cancel
-                        </button>
+                        {/* NÚT HÀNH ĐỘNG FULL WIDTH TRONG CARD */}
+                        {data.status === 'PENDING' ? (
+                            <button
+                                onClick={handleCancelRequest}
+                                className="ld-cancel-btn-full"
+                                disabled={cancelling}
+                            >
+                                {cancelling ? 'Cancelling...' : 'Cancel Request'}
+                            </button>
+                        ) : (
+                            <button onClick={onBack} className="ld-cancel-btn-full">
+                                Back
+                            </button>
+                        )}
 
                     </div>
                 </div>
