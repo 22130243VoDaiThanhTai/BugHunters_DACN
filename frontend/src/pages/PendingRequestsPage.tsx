@@ -319,7 +319,7 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
                                         <td>
                                             <div className="pr-actions">
                                                 <button className="pr-btn-reject" onClick={() => handleAction(req.id, 'reject')}>
-                                                    <IconX />
+                                                    Reject
                                                 </button>
                                                 <button className="pr-btn-approve" onClick={() => handleAction(req.id, 'approve')}>
                                                     Approve

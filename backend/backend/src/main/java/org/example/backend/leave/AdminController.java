@@ -54,6 +54,7 @@ public class AdminController {
             ));
         }
     }
+
     @PutMapping("/requests/{id}/status")
     public ResponseEntity<?> updateRequestStatus(
             @PathVariable Long id,
@@ -102,4 +103,4 @@ public class AdminController {
             ));
         }
     }
-
+}
