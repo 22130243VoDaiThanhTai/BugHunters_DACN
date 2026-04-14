@@ -9,7 +9,6 @@ import org.example.backend.leave.dto.LeaveDashboardResponse;
 import org.example.backend.leave.dto.LeaveRequestDto;
 import org.example.backend.leave.dto.UpdateLeaveRequestStatusRequest;
 import org.example.backend.leave.dto.PendingLeaveRequestDto;
-
 import org.example.backend.leave.dto.LeaveRequestDetailDto;
 
 import org.example.backend.user.AppUser;
@@ -37,9 +36,9 @@ public class LeaveService {
 
     public LeaveDashboardResponse getDashboard(String email) {
         AppUser user = findUserByEmail(email);
-        LeaveDashboardResponse.LeaveBalanceSummary leaveBalanceSummary = syncAndGetLeaveBalanceSummary(
-            user.getId(),
-            LocalDate.now().getYear());
+
+        LeaveDashboardResponse.LeaveBalanceSummary leaveBalanceSummary =
+                syncAndGetLeaveBalanceSummary(user.getId(), LocalDate.now().getYear());
 
         List<LeaveRequestDto> recentRequests = leaveRequestRepository
                 .findTop5ByUserIdOrderByCreatedAtDescIdDesc(user.getId())
@@ -48,15 +47,16 @@ public class LeaveService {
                 .toList();
 
         long pendingCount = "MANAGER".equalsIgnoreCase(user.getRole())
-            ? leaveRequestRepository.countByStatus(LeaveStatus.PENDING)
-            : 0;
+                ? leaveRequestRepository.countByStatus(LeaveStatus.PENDING)
+                : 0;
 
-        LeaveDashboardResponse.UserSummary userSummary = new LeaveDashboardResponse.UserSummary(
-                user.getId(),
-                user.getFullName(),
-                user.getDepartment(),
-                user.getPosition(),
-                user.getRole());
+        LeaveDashboardResponse.UserSummary userSummary =
+                new LeaveDashboardResponse.UserSummary(
+                        user.getId(),
+                        user.getFullName(),
+                        user.getDepartment(),
+                        user.getPosition(),
+                        user.getRole());
 
         return new LeaveDashboardResponse(
                 true,
@@ -74,8 +74,8 @@ public class LeaveService {
             throw new RuntimeException("FORBIDDEN");
         }
 
-
-        List<LeaveRequest> pendingRequests = leaveRequestRepository.findByStatusOrderByCreatedAtDesc(LeaveStatus.PENDING);
+        List<LeaveRequest> pendingRequests =
+                leaveRequestRepository.findByStatusOrderByCreatedAtDesc(LeaveStatus.PENDING);
 
         return pendingRequests.stream().map(req -> {
             AppUser user = appUserRepository.findById(req.getUserId()).orElse(null);
@@ -104,9 +104,51 @@ public class LeaveService {
         }
 
         LeaveRequest req = leaveRequestRepository.findById(requestId)
-            .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+
         AppUser user = appUserRepository.findById(req.getUserId())
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        int requestYear = req.getStartDate() != null
+                ? req.getStartDate().getYear()
+                : LocalDate.now().getYear();
+
+        LeaveDashboardResponse.LeaveBalanceSummary summary =
+                syncAndGetLeaveBalanceSummary(user.getId(), requestYear);
+
+        int currentDays = summary.remainingDays();
+        int requestedDays = req.getTotalDays() != null ? req.getTotalDays() : 0;
+        int remainingDays = Math.max(0, currentDays - requestedDays);
+
+        LeaveRequestDetailDto.BalanceImpactDto balanceImpact =
+                new LeaveRequestDetailDto.BalanceImpactDto(
+                        currentDays, requestedDays, remainingDays);
+
+        LeaveRequestDetailDto.TeamAvailabilityDto teamAvailability =
+                new LeaveRequestDetailDto.TeamAvailabilityDto(
+                        user.getDepartment(),
+                        85,
+                        "2 other team members are on leave during this period. Overlap is minimal."
+                );
+
+        return new LeaveRequestDetailDto(
+                req.getId(),
+                user.getId(),
+                user.getFullName(),
+                user.getRole(),
+                user.getDepartment(),
+                user.getPosition(),
+                req.getStartDate(),
+                req.getEndDate(),
+                req.getTotalDays(),
+                req.getReason(),
+                req.getStatus(),
+                req.getCreatedAt(),
+                balanceImpact,
+                teamAvailability
+        );
+    }
+
     public List<LeaveRequestDto> getPersonalLeaveHistory(String email) {
         AppUser user = findUserByEmail(email);
 
@@ -116,53 +158,19 @@ public class LeaveService {
                 .toList();
     }
 
-
-        int requestYear = req.getStartDate() != null ? req.getStartDate().getYear() : LocalDate.now().getYear();
-        LeaveDashboardResponse.LeaveBalanceSummary summary = syncAndGetLeaveBalanceSummary(user.getId(), requestYear);
-
-        int currentDays = summary.remainingDays();
-        int requestedDays = req.getTotalDays() != null ? req.getTotalDays() : 0;
-        int remainingDays = Math.max(0, currentDays - requestedDays);
-
-        LeaveRequestDetailDto.BalanceImpactDto balanceImpact = new LeaveRequestDetailDto.BalanceImpactDto(
-            currentDays, requestedDays, remainingDays
-        );
-
-        LeaveRequestDetailDto.TeamAvailabilityDto teamAvailability = new LeaveRequestDetailDto.TeamAvailabilityDto(
-            user.getDepartment(),
-            85,
-            "2 other team members are on leave during this period. Overlap is minimal."
-        );
-
-        return new LeaveRequestDetailDto(
-            req.getId(),
-            user.getId(),
-            user.getFullName(),
-            user.getRole(),
-            user.getDepartment(),
-            user.getPosition(),
-            req.getStartDate(),
-            req.getEndDate(),
-            req.getTotalDays(),
-            req.getReason(),
-            req.getStatus(),
-            req.getCreatedAt(),
-            balanceImpact,
-            teamAvailability
-        );
-    }
     public LeaveRequestDto createLeaveRequest(CreateLeaveRequestRequest request) {
         if (request.startDate() == null || request.endDate() == null) {
             throw new IllegalArgumentException("Start date and end date are required");
         }
 
         if (request.endDate().isBefore(request.startDate())) {
-            throw new IllegalArgumentException("End date must be greater than or equal to start date");
+            throw new IllegalArgumentException("End date must be >= start date");
         }
 
         AppUser user = findUserByEmail(request.email());
 
-        long totalDays = ChronoUnit.DAYS.between(request.startDate(), request.endDate()) + 1;
+        long totalDays =
+                ChronoUnit.DAYS.between(request.startDate(), request.endDate()) + 1;
 
         LeaveRequest leaveRequest = new LeaveRequest();
         leaveRequest.setUserId(user.getId());
@@ -172,31 +180,31 @@ public class LeaveService {
         leaveRequest.setReason(cleanReason(request.reason()));
         leaveRequest.setStatus(LeaveStatus.PENDING);
 
-        LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
-        return toDto(saved);
+        return toDto(leaveRequestRepository.save(leaveRequest));
     }
 
     @Transactional
     public LeaveRequestDto updateLeaveRequestStatus(Long requestId, UpdateLeaveRequestStatusRequest request) {
-        if (requestId == null) {
-            throw new IllegalArgumentException("Request ID is required");
-        }
-        if (request == null || request.status() == null) {
+        if (requestId == null) throw new IllegalArgumentException("Request ID is required");
+        if (request == null || request.status() == null)
             throw new IllegalArgumentException("Status is required");
-        }
 
         LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Leave request not found: " + requestId));
+                .orElseThrow(() -> new IllegalArgumentException("Not found"));
 
-        LeaveStatus targetStatus = request.status();
-        if (targetStatus == LeaveStatus.APPROVED) {
+        if (request.status() == LeaveStatus.APPROVED) {
             validateAnnualLimitBeforeApproval(leaveRequest);
         }
 
-        leaveRequest.setStatus(targetStatus);
+        leaveRequest.setStatus(request.status());
+
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
-        syncAndGetLeaveBalanceSummary(saved.getUserId(), saved.getStartDate().getYear());
+        syncAndGetLeaveBalanceSummary(
+                saved.getUserId(),
+                saved.getStartDate().getYear()
+        );
+
         return toDto(saved);
     }
 
@@ -206,7 +214,7 @@ public class LeaveService {
         }
 
         return appUserRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found for email: " + email));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
     private LeaveRequestDto toDto(LeaveRequest leaveRequest) {
@@ -216,79 +224,67 @@ public class LeaveService {
                 leaveRequest.getEndDate(),
                 leaveRequest.getTotalDays(),
                 leaveRequest.getReason(),
-                leaveRequest.getStatus());
+                leaveRequest.getStatus()
+        );
     }
 
-        @Transactional
-        private LeaveDashboardResponse.LeaveBalanceSummary syncAndGetLeaveBalanceSummary(Long userId, int year) {
+    @Transactional
+    private LeaveDashboardResponse.LeaveBalanceSummary syncAndGetLeaveBalanceSummary(Long userId, int year) {
         LocalDate fromDate = LocalDate.of(year, 1, 1);
         LocalDate toDate = LocalDate.of(year, 12, 31);
+
         int usedDays = valueOrDefault(
-            leaveRequestRepository.sumTotalDaysByUserIdAndStatusAndStartDateBetween(
-                userId,
-                LeaveStatus.APPROVED,
-                fromDate,
-                toDate),
-            0);
+                leaveRequestRepository.sumTotalDaysByUserIdAndStatusAndStartDateBetween(
+                        userId, LeaveStatus.APPROVED, fromDate, toDate),
+                0
+        );
+
         int remainingDays = Math.max(0, DEFAULT_TOTAL_DAYS - usedDays);
 
         LeaveBalance leaveBalance = leaveBalanceRepository
-            .findByUserId(userId)
-            .orElseGet(() -> {
-                LeaveBalance created = new LeaveBalance();
-                created.setUserId(userId);
-                return created;
-            });
+                .findByUserId(userId)
+                .orElseGet(() -> {
+                    LeaveBalance lb = new LeaveBalance();
+                    lb.setUserId(userId);
+                    return lb;
+                });
 
         leaveBalance.setTotalDays(DEFAULT_TOTAL_DAYS);
         leaveBalance.setUsedDays(usedDays);
         leaveBalance.setRemainingDays(remainingDays);
+
         leaveBalanceRepository.save(leaveBalance);
 
-        return new LeaveDashboardResponse.LeaveBalanceSummary(DEFAULT_TOTAL_DAYS, usedDays, remainingDays);
+        return new LeaveDashboardResponse.LeaveBalanceSummary(
+                DEFAULT_TOTAL_DAYS, usedDays, remainingDays
+        );
+    }
+
+    private void validateAnnualLimitBeforeApproval(LeaveRequest leaveRequest) {
+        int year = leaveRequest.getStartDate().getYear();
+
+        int approvedDays = valueOrDefault(
+                leaveRequestRepository.sumTotalDaysByUserIdAndStatusAndStartDateBetween(
+                        leaveRequest.getUserId(),
+                        LeaveStatus.APPROVED,
+                        LocalDate.of(year, 1, 1),
+                        LocalDate.of(year, 12, 31)
+                ),
+                0
+        );
+
+        int requestDays = valueOrDefault(leaveRequest.getTotalDays(), 0);
+
+        if (approvedDays + requestDays > DEFAULT_TOTAL_DAYS) {
+            throw new IllegalArgumentException("Exceed yearly limit");
         }
-
-        private void validateAnnualLimitBeforeApproval(LeaveRequest leaveRequest) {
-        if (leaveRequest.getStartDate() == null) {
-            throw new IllegalArgumentException("Leave request start date is required");
-        }
-
-        int requestYear = leaveRequest.getStartDate().getYear();
-        LocalDate fromDate = LocalDate.of(requestYear, 1, 1);
-        LocalDate toDate = LocalDate.of(requestYear, 12, 31);
-
-        int approvedDaysInYear = valueOrDefault(
-            leaveRequestRepository.sumTotalDaysByUserIdAndStatusAndStartDateBetween(
-                leaveRequest.getUserId(),
-                LeaveStatus.APPROVED,
-                fromDate,
-                toDate),
-            0);
-        int currentRequestDays = valueOrDefault(leaveRequest.getTotalDays(), 0);
-
-        boolean alreadyApproved = leaveRequest.getStatus() == LeaveStatus.APPROVED;
-        int projectedUsedDays = alreadyApproved
-            ? approvedDaysInYear
-            : approvedDaysInYear + currentRequestDays;
-
-        if (projectedUsedDays > DEFAULT_TOTAL_DAYS) {
-            int remaining = Math.max(0, DEFAULT_TOTAL_DAYS - approvedDaysInYear);
-            throw new IllegalArgumentException(
-                "Cannot approve request: employee can only take " + DEFAULT_TOTAL_DAYS
-                    + " days/year. Remaining days: " + remaining);
-        }
-        }
-
+    }
 
     private static Integer valueOrDefault(Integer value, Integer fallback) {
         return value == null ? fallback : value;
     }
 
     private static String cleanReason(String reason) {
-        if (reason == null) {
-            return "";
-        }
-
-        return reason.trim();
+        return reason == null ? "" : reason.trim();
     }
 }

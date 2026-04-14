@@ -1,33 +1,32 @@
 package org.example.backend.leave;
 
+import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.LocalDate;
 import java.util.List;
-
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
+
     List<LeaveRequest> findTop5ByUserIdOrderByCreatedAtDescIdDesc(Long userId);
-
-    long countByStatus(LeaveStatus status);
-
-
-
-    @Query("""
-            select coalesce(sum(lr.totalDays), 0)
-            from LeaveRequest lr
-            where lr.userId = :userId
-                and lr.status = :status
-                and lr.startDate between :fromDate and :toDate
-            """)
-    Integer sumTotalDaysByUserIdAndStatusAndStartDateBetween(
-            @Param("userId") Long userId,
-            @Param("status") LeaveStatus status,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate);
 
     List<LeaveRequest> findByStatusOrderByCreatedAtDesc(LeaveStatus status);
 
+    long countByStatus(LeaveStatus status);
+
+    List<LeaveRequest> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    @Query("SELECT SUM(l.totalDays) FROM LeaveRequest l " +
+            "WHERE l.userId = :userId " +
+            "AND l.status = :status " +
+            "AND l.startDate BETWEEN :start AND :end")
+    Integer sumTotalDaysByUserIdAndStatusAndStartDateBetween(
+            @Param("userId") Long userId,
+            @Param("status") LeaveStatus status,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
 
 
+}
