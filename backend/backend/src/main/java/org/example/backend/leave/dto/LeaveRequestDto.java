@@ -10,5 +10,7 @@ public record LeaveRequestDto(
         LocalDate endDate,
         Integer totalDays,
         String reason,
-        LeaveStatus status) {
+        LeaveStatus status,
+        String rejectionReason
+) {
 }

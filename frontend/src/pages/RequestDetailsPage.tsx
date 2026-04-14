@@ -26,6 +26,7 @@ type LeaveRequestDetailDto = {
     reason: string;
     status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
     createdAt: string;
+    rejectionReason?: string;
     balanceImpact: BalanceImpactDto;
     teamAvailability: TeamAvailabilityDto;
 };
@@ -35,6 +36,7 @@ type RequestDetailsPageProps = {
     requestId: number;
     onBack: () => void;
     onBackToDashboard: () => void;
+    initialAction?: 'view' | 'reject';
 };
 
 const API_URL = "http://localhost:8080/api/admin/requests";
@@ -97,11 +99,14 @@ const IconXCircle = () => (
     </svg>
 );
 
-const RequestDetailsPage: React.FC<RequestDetailsPageProps> = ({ userEmail, requestId, onBack, onBackToDashboard }) => {
+const RequestDetailsPage: React.FC<RequestDetailsPageProps> = ({ userEmail, requestId, onBack, onBackToDashboard,    initialAction }) => {
     const [detail, setDetail] = useState<LeaveRequestDetailDto | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [actionState, setActionState] = useState<'none' | 'declining'>('none');
+    const [actionState, setActionState] = useState<'none' | 'declining'>(
+        initialAction === 'reject' ? 'declining' : 'none'
+    );
+
     const [rejectionReason, setRejectionReason] = useState('');
 
     useEffect(() => {
@@ -148,16 +153,22 @@ const RequestDetailsPage: React.FC<RequestDetailsPageProps> = ({ userEmail, requ
             alert('Please provide a rejection reason');
             return;
         }
+
         try {
             const res = await fetch(`${UPDATE_URL}/${requestId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'REJECTED' }) /* Assuming status only, but could add reason if backed supports it. */
+                body: JSON.stringify({
+                    status: 'REJECTED',
+                    reason: rejectionReason
+                })
             });
+
             const data = await res.json();
+
             if (res.ok && data.success) {
                 alert('Request rejected successfully');
-                onBack();
+                onBack(); // quay lại list
             } else {
                 alert(data.message || 'Error rejecting request');
             }
@@ -165,6 +176,7 @@ const RequestDetailsPage: React.FC<RequestDetailsPageProps> = ({ userEmail, requ
             alert('Cannot connect to server');
         }
     };
+
 
     return (
         <div className="rd-root">

@@ -18,6 +18,7 @@ public record LeaveRequestDetailDto(
         String reason,
         LeaveStatus status,
         LocalDateTime createdAt,
+        String rejectionReason,
         BalanceImpactDto balanceImpact,
         TeamAvailabilityDto teamAvailability
 ) {

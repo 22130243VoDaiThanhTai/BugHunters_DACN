@@ -17,16 +17,33 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 @RestController
 @RequestMapping("/api/leave")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PATCH, RequestMethod.OPTIONS})
+
 public class LeaveController {
 
     private final LeaveService leaveService;
 
     public LeaveController(LeaveService leaveService) {
         this.leaveService = leaveService;
+    }
+    @GetMapping("/{requestId}")
+    public ResponseEntity<?> getLeaveDetail(
+            @PathVariable Long requestId,
+            @RequestParam String email
+    ) {
+        try {
+            var detail = leaveService.getLeaveDetail(requestId, email);
+            return ResponseEntity.ok(detail);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", ex.getMessage()
+            ));
+        }
     }
 
     @GetMapping("/dashboard")

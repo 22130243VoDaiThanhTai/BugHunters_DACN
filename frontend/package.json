@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "antd": "^6.3.5",
-    "dayjs": "^1.11.20"
+    "dayjs": "^1.11.20",
+    "react-router-dom": "^7.14.1"
   }
 }
