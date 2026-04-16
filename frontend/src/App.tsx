@@ -171,6 +171,7 @@ const App: React.FC = () => {
                   userEmail={loggedInUser}
                   onBackToDashboard={() => navigate('/dashboard')}
                   onNavigateToHistory={() => navigate('/history')}
+                  onLogout={handleLogout}
                 />
               )}
             </RequireAuth>
