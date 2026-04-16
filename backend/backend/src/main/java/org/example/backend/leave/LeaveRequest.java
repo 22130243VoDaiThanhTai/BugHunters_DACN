@@ -37,6 +37,9 @@ public class LeaveRequest {
     @Column(columnDefinition = "TEXT")
     private String reason;
 
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private LeaveStatus status;
@@ -104,4 +107,8 @@ public class LeaveRequest {
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
+    public String getRejectionReason() { return rejectionReason; }
+
+    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason;}
+
 }

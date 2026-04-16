@@ -26,6 +26,7 @@ type PendingRequestsPageProps = {
     onBackToDashboard: () => void;
     onNavigateToHistory?: () => void;
     onNavigateToSubmit?: () => void;
+    onViewDetails?: (id: number, action?: 'view' | 'reject') => void;
 };
 
 const API_URL = "http://localhost:8080/api/admin/pending-requests";
@@ -82,7 +83,7 @@ const IconLogout = () => (
     </svg>
 );
 
-const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, onBackToDashboard, onNavigateToHistory, onNavigateToSubmit }) => {
+const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, onBackToDashboard, onNavigateToHistory, onNavigateToSubmit, onViewDetails }) => {
     const [requests, setRequests] = useState<PendingLeaveRequestDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -122,9 +123,10 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
     const handleAction = async (id: number, action: 'approve' | 'reject') => {
         try {
             const res = await fetch(
-                `http://localhost:8080/api/admin/requests/${id}/status?email=${userEmail}`,
+                `http://localhost:8080/api/leave/requests/${id}/status`,
+
                 {
-                    method: "PUT",
+                    method: "PATCH",
                     headers: {
                         "Content-Type": "application/json"
                     },
@@ -138,13 +140,22 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
 
             if (data.success) {
                 alert("Cập nhật thành công ");
-                loadRequests(); // reload lại list
+                setRequests((prev) => prev.filter((request) => request.id !== id));
             } else {
                 alert(data.message);
             }
 
         } catch (err) {
             alert("Lỗi server ");
+        }
+    };
+
+    const handleRowClick = (id: number, e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('button')) {
+            return;
+        }
+        if (onViewDetails) {
+            onViewDetails(id);
         }
     };
 
@@ -169,12 +180,16 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
                     <button className="ed-nav__btn" onClick={onBackToDashboard}>
                         <span className="ed-nav__icon"><IconDashboard /></span> Dashboard
                     </button>
-                    <button className="ed-nav__btn" onClick={onNavigateToSubmit}>
-                        <span className="ed-nav__icon"><IconRequest /></span> Submit Request
-                    </button>
-                    <button className="ed-nav__btn" onClick={onNavigateToHistory}>
-                        <span className="ed-nav__icon"><IconHistory /></span> History
-                    </button>
+                    {onNavigateToSubmit && (
+                        <button className="ed-nav__btn" onClick={onNavigateToSubmit}>
+                            <span className="ed-nav__icon"><IconRequest /></span> Submit Request
+                        </button>
+                    )}
+                    {onNavigateToHistory && (
+                        <button className="ed-nav__btn" onClick={onNavigateToHistory}>
+                            <span className="ed-nav__icon"><IconHistory /></span> History
+                        </button>
+                    )}
                     <button className="ed-nav__btn ed-nav__btn--active">
                         <span className="ed-nav__icon"><IconPending /></span> Pending Requests
                     </button>
@@ -282,7 +297,7 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
                                     <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px' }}>No pending requests</td></tr>
                                 )}
                                 {requests.map(req => (
-                                    <tr key={req.id}>
+                                    <tr key={req.id} onClick={(e) => handleRowClick(req.id, e)} style={{ cursor: 'pointer' }}>
                                         <td>
                                             <div className="pr-emp">
                                                 <div className="pr-emp__avatar" style={{ background: getAvatarColor(req.userId) }}>
@@ -308,9 +323,13 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
                                         </td>
                                         <td>
                                             <div className="pr-actions">
-                                                <button className="pr-btn-reject" onClick={() => handleAction(req.id, 'reject')}>
-                                                    <IconX />
+                                                <button
+                                                    className="pr-btn-reject"
+                                                    onClick={() => onViewDetails && onViewDetails(req.id)}
+                                                >
+                                                    Reject
                                                 </button>
+
                                                 <button className="pr-btn-approve" onClick={() => handleAction(req.id, 'approve')}>
                                                     Approve
                                                 </button>

@@ -1,5 +1,5 @@
-CREATE DATABASE leave_management;
-USE leave_management;
+CREATE DATABASE IF NOT EXISTS elm;
+USE elm;
 
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -7,7 +7,7 @@ CREATE TABLE users (
     password VARCHAR(100) NOT NULL,
 
     full_name VARCHAR(100) NOT NULL,
-    email VARCHAR(100),
+    email VARCHAR(100) NOT NULL UNIQUE,
     phone VARCHAR(20),
 
     gender ENUM('MALE', 'FEMALE', 'OTHER'),
@@ -34,7 +34,7 @@ CREATE TABLE leave_requests (
 
     reason TEXT,
 
-    status ENUM('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED') DEFAULT 'PENDING',
+    status ENUM('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
     rejection_reason TEXT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
