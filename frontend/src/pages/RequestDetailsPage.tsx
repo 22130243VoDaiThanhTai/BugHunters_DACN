@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import "../styles/ManagerDashboard.css";
 import "../styles/RequestDetailsPage.css";
 
 type BalanceImpactDto = {
@@ -180,45 +181,37 @@ const RequestDetailsPage: React.FC<RequestDetailsPageProps> = ({ userEmail, requ
 
     return (
         <div className="rd-root">
-            <aside className="ed-sidebar">
-                <div className="ed-logo">
-                    <div className="ed-logo__icon" style={{background: '#1d4ed8'}}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <rect x="3" y="3" width="7" height="7" rx="2" stroke="white" strokeWidth="2" />
-                            <rect x="14" y="3" width="7" height="7" rx="2" stroke="white" strokeWidth="2" />
-                            <rect x="3" y="14" width="7" height="7" rx="2" stroke="white" strokeWidth="2" />
-                        </svg>
+            <aside className="sidebar">
+                <div className="logo-section">
+                    <div className="logo-icon-box">
+                        <div className="logo-dot"></div>
+                        <div className="logo-dot"></div>
+                        <div className="logo-dot"></div>
+                        <div className="logo-dot"></div>
                     </div>
-                    <div>
-                        <div className="ed-logo__name" style={{color: '#1e3a8a'}}>Ethereal</div>
-                        <div className="ed-logo__sub">WORKPLACE</div>
+                    <div className="logo-text">
+                        <h1>Ethereal</h1>
+                        <p>WORKPLACE</p>
                     </div>
                 </div>
 
-                <nav className="ed-nav">
-                    <button className="ed-nav__btn" onClick={onBackToDashboard}>
-                        <span className="ed-nav__icon"><IconDashboard /></span> Dashboard
+                <nav className="menu">
+                    <button type="button" className="menu-item" onClick={onBackToDashboard}>
+                        <span className="icon">⊞</span> Dashboard
                     </button>
-                    <button className="ed-nav__btn">
-                        <span className="ed-nav__icon"><IconRequest /></span> Submit Request
-                    </button>
-                    <button className="ed-nav__btn">
-                        <span className="ed-nav__icon"><IconHistory /></span> History
-                    </button>
-                    <button className="ed-nav__btn ed-nav__btn--active" onClick={onBack}>
-                        <span className="ed-nav__icon"><IconPending /></span> Pending Requests
+                    <button type="button" className="menu-item active" onClick={onBack}>
+                        <span className="icon">◷</span> Pending Requests
                     </button>
                 </nav>
 
-                <div className="rd-bottom-user">
-                    <div className="rd-bottom-user__avatar">M</div>
-                    <div className="rd-bottom-user__info">
-                        <div className="rd-bottom-user__name">Alex Sterling</div>
-                        <div className="rd-bottom-user__role">Department Manager</div>
+                <div className="sidebar-footer">
+                    <div className="user-info-mini">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Manager" alt="Avatar" />
+                        <div className="user-text">
+                            <p className="user-name">Manager</p>
+                            <p className="user-role">Manager Access</p>
+                        </div>
                     </div>
-                </div>
-                <div style={{padding: '0 24px 24px'}}>
-                    <button className="rd-settings-btn">Settings</button>
                 </div>
             </aside>
 
