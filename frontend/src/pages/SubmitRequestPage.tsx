@@ -1,17 +1,12 @@
 import React, { useState } from "react";
-import { Layout, Menu, Card, DatePicker, Input, Button, Typography, Avatar, Space, Badge, Alert } from "antd";
+import { Card, DatePicker, Input, Button, Typography, Alert } from "antd";
 import type { Dayjs } from "dayjs";
 import {
-    DashboardOutlined,
-    PlusOutlined,
-    HistoryOutlined,
-    BellOutlined,
-    SettingOutlined,
     CalendarOutlined,
 } from "@ant-design/icons";
+import "../styles/EmployeeDashboard.css";
 import "../styles/RequestPageStyle.css";
 
-const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
@@ -19,6 +14,7 @@ type SubmitRequestPageProps = {
     userEmail: string;
     onBackToDashboard?: () => void;
     onNavigateToHistory?: () => void;
+    onLogout?: () => void;
 };
 
 type SubmitApiResponse = {
@@ -26,13 +22,68 @@ type SubmitApiResponse = {
     message: string;
 };
 
-const SubmitRequestPage: React.FC<SubmitRequestPageProps> = ({ userEmail, onBackToDashboard, onNavigateToHistory }) => {
+const IconDashboard = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+);
+
+const IconRequest = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="16" />
+        <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+);
+
+const IconHistory = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="1 4 1 10 7 10" />
+        <path d="M3.51 15a9 9 0 1 0 .49-4.95" />
+    </svg>
+);
+
+const IconLogout = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <polyline points="16 17 21 12 16 7" />
+        <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+);
+
+const SubmitRequestPage: React.FC<SubmitRequestPageProps> = ({
+    userEmail,
+    onBackToDashboard,
+    onNavigateToHistory,
+    onLogout,
+}) => {
     const [loading, setLoading] = useState(false);
     const [startDate, setStartDate] = useState<Dayjs | null>(null);
     const [endDate, setEndDate] = useState<Dayjs | null>(null);
     const [reason, setReason] = useState("");
     const [message, setMessage] = useState("");
     const [isError, setIsError] = useState(false);
+
+    const displayName = (() => {
+        const localPart = (userEmail || "User").split("@")[0];
+        return localPart
+            .replace(/[._-]+/g, " ")
+            .split(" ")
+            .filter(Boolean)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(" ");
+    })();
+
+    const initials = displayName
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part.charAt(0))
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
 
     const clearForm = () => {
         setStartDate(null);
@@ -84,53 +135,71 @@ const SubmitRequestPage: React.FC<SubmitRequestPageProps> = ({ userEmail, onBack
     };
 
     return (
-        <Layout className="leave-layout">
-            <Sider width={260} className="leave-sider" theme="light">
-                <div className="logo-container">
-                    <div className="logo-icon">H</div>
-                    <div className="logo-text">
-                        <div className="main-title">Management</div>
-                        <div className="sub-title">EMPLOYEE PORTAL</div>
+        <div className="ed-root submit-page">
+            <aside className="ed-sidebar">
+                <div className="ed-logo">
+                    <div className="ed-logo__icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                                stroke="white"
+                                strokeWidth="2"
+                            />
+                        </svg>
+                    </div>
+                    <div>
+                        <div className="ed-logo__name">Azure Horizon</div>
+                        <div className="ed-logo__sub">Employee Portal</div>
                     </div>
                 </div>
 
-                <Menu mode="inline" selectedKeys={["2"]} className="side-menu">
-                    <Menu.Item key="1" icon={<DashboardOutlined />} onClick={onBackToDashboard}>Dashboard</Menu.Item>
-                    <Menu.Item key="2" icon={<PlusOutlined />}>Submit Request</Menu.Item>
-                    <Menu.Item key="3" icon={<HistoryOutlined />} onClick={onNavigateToHistory}>History</Menu.Item>
-                </Menu>
+                <nav className="ed-nav">
+                    <button type="button" className="ed-nav__btn" onClick={onBackToDashboard}>
+                        <span className="ed-nav__icon"><IconDashboard /></span>
+                        Dashboard
+                    </button>
+                    <button type="button" className="ed-nav__btn ed-nav__btn--active">
+                        <span className="ed-nav__icon"><IconRequest /></span>
+                        Submit Request
+                    </button>
+                    <button type="button" className="ed-nav__btn" onClick={onNavigateToHistory}>
+                        <span className="ed-nav__icon"><IconHistory /></span>
+                        History
+                    </button>
+                </nav>
 
-                <div className="new-request-btn">
-                    <Button type="primary" icon={<PlusOutlined />} block size="large" disabled>
-                        New Request
-                    </Button>
+                <div className="ed-manager-badge">
+                    <div className="ed-manager-badge__title">Leave Portal</div>
+                    <p className="ed-manager-badge__desc">
+                        Prepare a request, choose your dates, and send it to your manager.
+                    </p>
                 </div>
-            </Sider>
+            </aside>
 
-            <Layout className="main-render">
-                <Header className="leave-header">
-                    <div className="header-left">
-                        <span className="brand-name">Azure Horizon</span>
-                        <Space className="nav-links" size="large">
-                            <Text>Overview</Text>
-                            <Text className="active-link">Requests</Text>
-                            <Text>Team</Text>
-                        </Space>
+            <main className="ed-main submit-main">
+                <header className="ed-topbar">
+                    <h2 className="ed-topbar__title">Request Time Off</h2>
+                    <div className="ed-topbar__user">
+                        <div className="ed-topbar__user-info">
+                            <span className="ed-topbar__user-name">{displayName}</span>
+                            <span className="ed-topbar__user-role">Employee</span>
+                        </div>
+                        <div className="ed-avatar ed-avatar--header">{initials || "U"}</div>
+                        {onLogout && (
+                            <button className="ed-logout-btn" onClick={onLogout}>
+                                <IconLogout /> Logout
+                            </button>
+                        )}
                     </div>
-                    <div className="header-right">
-                        <Space size="middle">
-                            <Badge dot><BellOutlined className="icon-btn" /></Badge>
-                            <SettingOutlined className="icon-btn" />
-                            <Avatar>{(userEmail || "U").charAt(0).toUpperCase()}</Avatar>
-                        </Space>
-                    </div>
-                </Header>
+                </header>
 
-                <Content className="leave-content">
-                    <div className="content-container">
+                <div className="submit-content">
+                    <div className="content-container submit-container">
                         <div className="page-intro">
                             <div className="intro-text">
-                                <Text type="secondary" className="breadcrumb">PORTAL {">"} LEAVE MANAGEMENT</Text>
+                                <Text type="secondary" className="breadcrumb">
+                                    PORTAL {">"} LEAVE MANAGEMENT
+                                </Text>
                                 <Title level={2}>Request Time Off</Title>
                                 <Text type="secondary">Plan your balance and notify your team leads.</Text>
                             </div>
@@ -157,8 +226,8 @@ const SubmitRequestPage: React.FC<SubmitRequestPageProps> = ({ userEmail, onBack
                             />
                         )}
 
-                        <div className="grid-container">
-                            <div className="form-section">
+                        <div className="submit-grid-container">
+                            <div className="form-section submit-form-section">
                                 <Card className="main-form-card">
                                     <div className="date-row">
                                         <div className="input-field">
@@ -209,9 +278,9 @@ const SubmitRequestPage: React.FC<SubmitRequestPageProps> = ({ userEmail, onBack
                             </div>
                         </div>
                     </div>
-                </Content>
-            </Layout>
-        </Layout>
+                </div>
+            </main>
+        </div>
     );
 };
 
