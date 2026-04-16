@@ -280,3 +280,8 @@
     font-size: 11px;
     display: block;
 }
+
+/* Layout content wrapper - used when sidebar is provided by parent layout */
+.submit-content-only {
+    padding: 0;
+}

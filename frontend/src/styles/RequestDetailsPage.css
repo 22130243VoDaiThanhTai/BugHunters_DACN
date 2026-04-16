@@ -477,3 +477,8 @@
     justify-content: flex-end;
     gap: 12px;
 }
+
+/* Layout content wrapper - used when sidebar is provided by parent layout */
+.rd-content-only {
+    padding: 0;
+}

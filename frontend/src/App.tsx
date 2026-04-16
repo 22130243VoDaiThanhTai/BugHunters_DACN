@@ -9,6 +9,8 @@ import PendingRequestsPage from './pages/PendingRequestsPage';
 import HistoryPage from './pages/HistoryPage';
 import RequestDetailsPage from './pages/RequestDetailsPage';
 import LeaveDetail from './pages/LeaveDetail';
+import EmployeeLayout from './components/EmployeeLayout';
+import ManagerLayout from './components/ManagerLayout';
 
 const RequireAuth: React.FC<{ isAuthenticated: boolean; children: React.ReactElement }> = ({
   isAuthenticated,
@@ -21,7 +23,7 @@ const RequireAuth: React.FC<{ isAuthenticated: boolean; children: React.ReactEle
   return children;
 };
 
-const PendingRequestRoute: React.FC<{ userEmail: string }> = ({ userEmail }) => {
+const PendingRequestRoute: React.FC<{ userEmail: string; onLogout: () => void }> = ({ userEmail, onLogout }) => {
   const navigate = useNavigate();
   const { requestId } = useParams();
   const [searchParams] = useSearchParams();
@@ -33,17 +35,19 @@ const PendingRequestRoute: React.FC<{ userEmail: string }> = ({ userEmail }) => 
   }
 
   return (
-    <RequestDetailsPage
-      userEmail={userEmail}
-      requestId={requestIdNumber}
-      onBack={() => navigate('/pending')}
-      onBackToDashboard={() => navigate('/dashboard')}
-      initialAction={initialAction}
-    />
+    <ManagerLayout managerName="" onLogout={onLogout} pageTitle="Detail Requests" pageSubtitle="Review leave request details">
+      <RequestDetailsPage
+        userEmail={userEmail}
+        requestId={requestIdNumber}
+        onBack={() => navigate('/pending')}
+        onBackToDashboard={() => navigate('/dashboard')}
+        initialAction={initialAction}
+      />
+    </ManagerLayout>
   );
 };
 
-const HistoryDetailRoute: React.FC<{ userEmail: string }> = ({ userEmail }) => {
+const HistoryDetailRoute: React.FC<{ userEmail: string; onLogout: () => void; userName?: string }> = ({ userEmail, onLogout, userName }) => {
   const navigate = useNavigate();
   const { requestId } = useParams();
   const requestIdNumber = Number(requestId);
@@ -52,12 +56,17 @@ const HistoryDetailRoute: React.FC<{ userEmail: string }> = ({ userEmail }) => {
     return <Navigate to="/history" replace />;
   }
 
-  return <LeaveDetail requestId={requestIdNumber} userEmail={userEmail} onBack={() => navigate('/history')} />;
+  return (
+    <EmployeeLayout userEmail={userEmail} userName={userName} onLogout={onLogout} pageTitle="Leave Detail">
+      <LeaveDetail requestId={requestIdNumber} userEmail={userEmail} onBack={() => navigate('/history')} />
+    </EmployeeLayout>
+  );
 };
 
 const App: React.FC = () => {
   const navigate = useNavigate();
   const [loggedInUser, setLoggedInUser] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<'EMPLOYEE' | 'MANAGER' | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -65,10 +74,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const savedUser = localStorage.getItem('loggedInUser');
+    const savedName = localStorage.getItem('loggedInUserName');
 
     if (savedUser) {
       setLoggedInUser(savedUser);
       setIsAuthenticated(true);
+    }
+    if (savedName) {
+      setUserName(savedName);
     }
 
     setAuthReady(true);
@@ -90,6 +103,10 @@ const App: React.FC = () => {
         if (response.ok && data?.success && data?.user?.role) {
           const roleValue = String(data.user.role).toUpperCase();
           setUserRole(roleValue === 'MANAGER' ? 'MANAGER' : 'EMPLOYEE');
+          if (data.user.fullName) {
+            setUserName(data.user.fullName);
+            localStorage.setItem('loggedInUserName', data.user.fullName);
+          }
           return;
         }
 
@@ -115,6 +132,7 @@ const App: React.FC = () => {
     localStorage.clear();
     sessionStorage.clear();
     setLoggedInUser('');
+    setUserName('');
     setIsAuthenticated(false);
     setUserRole(null);
     setRoleReady(false);
@@ -167,11 +185,19 @@ const App: React.FC = () => {
               {isManager ? (
                 <Navigate to="/dashboard" replace />
               ) : (
-                <SubmitRequestPage
+                <EmployeeLayout
                   userEmail={loggedInUser}
-                  onBackToDashboard={() => navigate('/dashboard')}
-                  onNavigateToHistory={() => navigate('/history')}
-                />
+                  userName={userName}
+                  userRole="Employee"
+                  onLogout={handleLogout}
+                  pageTitle="Submit Request"
+                >
+                  <SubmitRequestPage
+                    userEmail={loggedInUser}
+                    onBackToDashboard={() => navigate('/dashboard')}
+                    onNavigateToHistory={() => navigate('/history')}
+                  />
+                </EmployeeLayout>
               )}
             </RequireAuth>
           }
@@ -180,13 +206,36 @@ const App: React.FC = () => {
           path="/pending"
           element={
             <RequireAuth isAuthenticated={isAuthenticated}>
-              <PendingRequestsPage
-                userEmail={loggedInUser}
-                onBackToDashboard={() => navigate('/dashboard')}
-                onNavigateToSubmit={!isManager ? () => navigate('/submit') : undefined}
-                onNavigateToHistory={!isManager ? () => navigate('/history') : undefined}
-                onViewDetails={(id, action = 'view') => navigate(`/pending/${id}?action=${action}`)}
-              />
+              {isManager ? (
+                <ManagerLayout
+                  managerName={userName}
+                  onLogout={handleLogout}
+                  pageTitle="Pending Requests"
+                  pageSubtitle="Review and manage your team's upcoming absences."
+                >
+                  <PendingRequestsPage
+                    userEmail={loggedInUser}
+                    onBackToDashboard={() => navigate('/dashboard')}
+                    onViewDetails={(id, action = 'view') => navigate(`/pending/${id}?action=${action}`)}
+                  />
+                </ManagerLayout>
+              ) : (
+                <EmployeeLayout
+                  userEmail={loggedInUser}
+                  userName={userName}
+                  userRole="Employee"
+                  onLogout={handleLogout}
+                  pageTitle="Pending Requests"
+                >
+                  <PendingRequestsPage
+                    userEmail={loggedInUser}
+                    onBackToDashboard={() => navigate('/dashboard')}
+                    onNavigateToSubmit={() => navigate('/submit')}
+                    onNavigateToHistory={() => navigate('/history')}
+                    onViewDetails={(id, action = 'view') => navigate(`/pending/${id}?action=${action}`)}
+                  />
+                </EmployeeLayout>
+              )}
             </RequireAuth>
           }
         />
@@ -194,7 +243,7 @@ const App: React.FC = () => {
           path="/pending/:requestId"
           element={
             <RequireAuth isAuthenticated={isAuthenticated}>
-              <PendingRequestRoute userEmail={loggedInUser} />
+              <PendingRequestRoute userEmail={loggedInUser} onLogout={handleLogout} />
             </RequireAuth>
           }
         />
@@ -205,12 +254,20 @@ const App: React.FC = () => {
               {isManager ? (
                 <Navigate to="/dashboard" replace />
               ) : (
-                <HistoryPage
+                <EmployeeLayout
                   userEmail={loggedInUser}
-                  onBackToDashboard={() => navigate('/dashboard')}
-                  onNavigateToSubmit={() => navigate('/submit')}
-                  onViewDetail={(id) => navigate(`/history/${id}`)}
-                />
+                  userName={userName}
+                  userRole="Employee"
+                  onLogout={handleLogout}
+                  pageTitle="Leave History"
+                >
+                  <HistoryPage
+                    userEmail={loggedInUser}
+                    onBackToDashboard={() => navigate('/dashboard')}
+                    onNavigateToSubmit={() => navigate('/submit')}
+                    onViewDetail={(id) => navigate(`/history/${id}`)}
+                  />
+                </EmployeeLayout>
               )}
             </RequireAuth>
           }
@@ -219,7 +276,11 @@ const App: React.FC = () => {
           path="/history/:requestId"
           element={
             <RequireAuth isAuthenticated={isAuthenticated}>
-              {isManager ? <Navigate to="/dashboard" replace /> : <HistoryDetailRoute userEmail={loggedInUser} />}
+              {isManager ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <HistoryDetailRoute userEmail={loggedInUser} onLogout={handleLogout} userName={userName} />
+              )}
             </RequireAuth>
           }
         />

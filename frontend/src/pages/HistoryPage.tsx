@@ -841,14 +841,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ userEmail, onBackToDashboard,
     }
 
     return (
-        <div
-            style={{
-                minHeight: "100vh",
-                background: palette.bg,
-                padding: "28px 20px",
-                fontFamily: "Inter, Segoe UI, Arial, sans-serif",
-            }}
-        >
+        <div style={{ fontFamily: "Inter, Segoe UI, Arial, sans-serif" }}>
             {viewMode === "list" ? (
                 <div style={{ maxWidth: 980, margin: "0 auto" }}>
                     <div

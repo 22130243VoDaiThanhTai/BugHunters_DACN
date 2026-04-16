@@ -585,3 +585,9 @@
     color: #5a6480;
     font-weight: 500;
 }
+
+/* Content area inside EmployeeLayout */
+.ed-layout-content {
+    flex: 1;
+    overflow-y: auto;
+}

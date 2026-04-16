@@ -436,3 +436,8 @@
     color: #475569;
     padding: 0 10%;
 }
+
+/* Layout content wrapper - used when sidebar is provided by parent layout */
+.pr-content-only {
+    padding: 0;
+}
