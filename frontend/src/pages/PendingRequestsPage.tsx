@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import "../styles/ManagerDashboard.css";
 import "../styles/PendingRequests.css";
 
 type PendingLeaveRequestDto = {
@@ -161,43 +162,39 @@ const PendingRequestsPage: React.FC<PendingRequestsPageProps> = ({ userEmail, on
 
 
     return (
-        <div className="pr-root">
-            {/* Sidebar matching ED */}
-            <aside className="ed-sidebar">
-                <div className="ed-logo">
-                    <div className="ed-logo__icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2" />
-                        </svg>
+        <div className="dashboard-container">
+            {/* --- SIDEBAR --- */}
+            <aside className="sidebar">
+                <div className="logo-section">
+                    <div className="logo-icon-box">
+                        <div className="logo-dot"></div>
+                        <div className="logo-dot"></div>
+                        <div className="logo-dot"></div>
+                        <div className="logo-dot"></div>
                     </div>
-                    <div>
-                        <div className="ed-logo__name">Azure Horizon</div>
-                        <div className="ed-logo__sub">Employee Portal</div>
+                    <div className="logo-text">
+                        <h1>Ethereal</h1>
+                        <p>WORKPLACE</p>
                     </div>
                 </div>
 
-                <nav className="ed-nav">
-                    <button className="ed-nav__btn" onClick={onBackToDashboard}>
-                        <span className="ed-nav__icon"><IconDashboard /></span> Dashboard
+                <nav className="menu">
+                    <button type="button" className="menu-item" onClick={onBackToDashboard}>
+                        <span className="icon">⊞</span> Dashboard
                     </button>
-                    {onNavigateToSubmit && (
-                        <button className="ed-nav__btn" onClick={onNavigateToSubmit}>
-                            <span className="ed-nav__icon"><IconRequest /></span> Submit Request
-                        </button>
-                    )}
-                    {onNavigateToHistory && (
-                        <button className="ed-nav__btn" onClick={onNavigateToHistory}>
-                            <span className="ed-nav__icon"><IconHistory /></span> History
-                        </button>
-                    )}
-                    <button className="ed-nav__btn ed-nav__btn--active">
-                        <span className="ed-nav__icon"><IconPending /></span> Pending Requests
+                    <button type="button" className="menu-item active">
+                        <span className="icon">◷</span> Pending Requests
                     </button>
                 </nav>
 
-                <div className="ed-manager-badge">
-                    <div className="ed-manager-badge__title">Manager Access</div>
-                    <p className="ed-manager-badge__desc">You have administrative privileges for your team.</p>
+                <div className="sidebar-footer">
+                    <div className="user-info-mini">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Manager" alt="Avatar" />
+                        <div className="user-text">
+                            <p className="user-name">Manager</p>
+                            <p className="user-role">Manager Access</p>
+                        </div>
+                    </div>
                 </div>
             </aside>
 
